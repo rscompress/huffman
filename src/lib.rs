@@ -11,3 +11,5 @@
 //! Afterwards it builds the codewords using a compact representation of the codewords
 //! described in the above paper. A second traversal of file then encodes each
 //! byte and saves it on disk.
+
+pub mod encode;

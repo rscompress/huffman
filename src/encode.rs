@@ -12,39 +12,35 @@
 //! The actual output is only written on disk as soon as it has enough bits set,
 //! that it looses no unused bits.
 
-use std::io::{Write, Error, ErrorKind};
+use std::io::{Error, ErrorKind, Write};
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
 pub struct Encoder<W: Write> {
     pub inner: W,
     codewords: [usize; 256],
     buffer: u32,
-    remaining_bits: usize
+    remaining_bits: usize,
 }
 
 impl<W: Write> Encoder<W> {
-
     /// Generate a new Encoder instance
     pub fn new(writer: W, codewords: [usize; 256]) -> Encoder<W> {
         Encoder {
             inner: writer,
             codewords: codewords,
             buffer: 0x0000_0000,
-            remaining_bits: 32
+            remaining_bits: 32,
         }
     }
-
 }
 
-
 impl<W: Write> Write for Encoder<W> {
-
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
         for val in buf.iter() {
             let codelen = calculate_length(self.codewords[*val as usize]);
             if codelen > 32 {
-                return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"))
+                return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"));
             }
             while codelen >= self.remaining_bits {
                 let output = (self.buffer & 0xFF00_0000 >> 24) as u8;
@@ -66,12 +62,12 @@ impl<W: Write> Write for Encoder<W> {
             }
         }
 
-        if self.buffer & 0x00FF_0000 > 0{
-            return Ok(writeout + 2)
+        if self.buffer & 0x00FF_0000 > 0 {
+            return Ok(writeout + 2);
         } else if self.buffer & 0xFF00_0000 > 0 {
-            return Ok(writeout + 1)
+            return Ok(writeout + 1);
         } else {
-            return Ok(writeout)
+            return Ok(writeout);
         }
     }
 
@@ -82,17 +78,17 @@ impl<W: Write> Write for Encoder<W> {
             ((self.buffer & 0x0000_FF00) >> 8) as u8,
             (self.buffer & 0x0000_00FF) as u8,
         ];
-        self.inner.write(&writeout[..(4 - self.remaining_bits / 8) as usize])?;
+        self.inner
+            .write(&writeout[..(4 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;
         Ok(())
     }
-
 }
 
 /// Calculate length of binary representation of `val`
 fn calculate_length(val: usize) -> usize {
     if val == 0 {
-        return 1usize
+        return 1usize;
     }
     let mut size = 0usize;
     while val >> size > 0 {
@@ -100,7 +96,6 @@ fn calculate_length(val: usize) -> usize {
     }
     size
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -110,18 +105,16 @@ mod tests {
 
     #[test]
     fn encode_stream() {
-
-        let mut codewords = [0usize;256];
+        let mut codewords = [0usize; 256];
         codewords[0] = 0;
         codewords[1] = 3;
         codewords[2] = 342;
         let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords);
-        let output_bytes = enc.write(&[0,1,2]).expect("");
+        let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");
 
         assert_eq!(enc.inner.get_ref(), &[117, 96]);
         assert_eq!(output_bytes, 2);
-
     }
 
     #[test]

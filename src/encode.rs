@@ -104,6 +104,22 @@ mod tests {
     use std::io::Write;
 
     #[test]
+    fn encode_numbers() {
+        let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
+        let mut codewords = [0usize; 256];
+        for word in words.iter() {
+            codewords[*word as usize] = *word as usize;
+        }
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords);
+        let output_bytes = enc.write(&words).expect("");
+        enc.flush().expect("");
+
+        assert_eq!(enc.inner.get_ref(), &[177, 225, 82, 62, 83, 14, 151, 58, 42]);
+        assert_eq!(output_bytes, 9);
+    }
+
+
+    #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
         codewords[0] = 0;

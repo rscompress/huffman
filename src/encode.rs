@@ -15,6 +15,12 @@
 use std::io::{Error, ErrorKind, Write};
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
+///
+/// `codewords` needs to be included into the `Encoder`, since the actual codeword
+/// for a byte value is for sure longer than 8 bits. The `Write Trait` only takes
+/// u8 values as input. If the codewords for any value is >255, it would through
+/// an error since the maximum value for a `u8` is `255`. The codeword is also the
+/// reason why `codewords` is an array of `usize` rather than `u8`.
 pub struct Encoder<W: Write> {
     pub inner: W,
     codewords: [usize; 256],

@@ -4,8 +4,8 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
-
-const BUF: usize = 4096;
+use rscompress_huffman::stats::generate_histogram;
+use rscompress_huffman::BUF;
 
 /// Main function (duh!)
 fn main() {
@@ -19,6 +19,13 @@ fn main() {
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) }
 
+    let histogram = generate_histogram(&mut reader);
+
+    for (i,v) in histogram.iter().enumerate() {
+        println!("{}: {}", i, v)
+    }
+
+    reader.seek(std::io::SeekFrom::Start(0)).expect("Can not move to start of file");
     loop {
         let read_size = reader.read(&mut buffer);
         match read_size {

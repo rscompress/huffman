@@ -12,4 +12,6 @@
 //! described in the above paper. A second traversal of file then encodes each
 //! byte and saves it on disk.
 
+pub const BUF: usize = 4096;
 pub mod encode;
+pub mod stats;

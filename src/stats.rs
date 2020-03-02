@@ -3,17 +3,17 @@
 use std::io::Read;
 use crate::BUF;
 
-fn update_histogram(take: usize, buffer: &[u8], histogram: &mut [u8]) {
+fn update_histogram(take: usize, buffer: &[u8], histogram: &mut [usize]) {
     for byte in buffer.iter().take(take) {
         histogram[*byte as usize] += 1;
     }
 }
 
 /// Build a histogram for each byte.
-pub fn generate_histogram(reader: &mut impl Read) -> [u8; 256] {
+pub fn generate_histogram(reader: &mut impl Read) -> [usize; 256] {
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) };
-    let mut histogram: [u8; 256] = [0; 256];
+    let mut histogram: [usize; 256] = [0; 256];
 
     // First loop over the data to gather statistics about the source file.
     loop {

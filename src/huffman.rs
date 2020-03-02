@@ -96,7 +96,6 @@ fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<us
         li_small_codes.set_len(lengths.len());
         li_big_codes.set_len(lengths.len());
     }
-    let sentinel = 1 << max_wordlen;
 
     for i in 1..lengths.len() {
         li_big_codes[i] = (1 << (max_wordlen - lengths[i - 1])) + li_big_codes[i - 1];

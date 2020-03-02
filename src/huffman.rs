@@ -1,5 +1,6 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
+use std::collections::HashMap;
 
 /// Calculate the length of the codewords for each byte in place.
 /// This will transform the histogram into a codeword length array for each
@@ -67,10 +68,96 @@ fn calculate_codeword_length(histogram: &[usize]) -> Vec<usize> {
     codeword_length
 }
 
+fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
+    let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256);
+    for (i, val) in array.iter().enumerate() {
+        hist.insert(i as u8, *val);
+    }
+    hist
+}
+
+fn sort_by_value(store: HashMap<u8, usize>) -> Vec<(u8, usize)> {
+    let mut sorted_tuple: Vec<_> = store.iter().filter(|a| *a.1 > 0 as usize).collect();
+    sorted_tuple.sort_by(|a, b| b.1.cmp(a.1));
+    let sorted_tuple = sorted_tuple.iter().map(|(&a, &b)| (a, b)).collect();
+    sorted_tuple
+}
+
+fn extract_values(store: &Vec<(u8, usize)>) -> Vec<usize> {
+    let values: Vec<_> = store.iter().map(|(_, b)| *b).collect();
+    values
+}
+
+fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<usize>) {
+    let max_wordlen = lengths[lengths.len() - 1];
+    let mut li_small_codes: Vec<usize> = vec![0usize; lengths.len()];
+    let mut li_big_codes: Vec<usize> = vec![0usize; lengths.len()];
+    unsafe {
+        li_small_codes.set_len(lengths.len());
+        li_big_codes.set_len(lengths.len());
+    }
+    let sentinel = 1 << max_wordlen;
+
+    for i in 1..lengths.len() {
+        li_big_codes[i] = (1 << (max_wordlen - lengths[i - 1])) + li_big_codes[i - 1];
+        li_small_codes[i] = li_big_codes[i] >> (max_wordlen - lengths[i])
+    }
+
+    (li_small_codes, li_big_codes)
+}
+
+/// Generate codewords from a histogram.
+///
+/// # Steps
+/// 1. Enumerate the histogram
+/// 2. Sort the enumerated histogram by count
+/// 3. Extract the counts of the sorted histogram
+fn generate_codewords(histogram: &[usize]) -> Codewords {
+    let hist = enumerate(histogram);
+    let sorted_tuple = sort_by_value(hist); // FIXME: It might be possible to split into two Vectors
+    let mut weights = extract_values(&sorted_tuple);
+
+    calculate_codeword_length_inplace(&mut weights[..]);
+
+    let sentinel = 1 << weights[weights.len() - 1];
+    let (li_small_codes, li_big_codes) = calculate_codewords_based_on_length(&weights);
+
+    Codewords::new(li_small_codes, li_big_codes, sentinel)
+}
+
+struct Codewords {
+    codewords: Vec<usize>,
+    alt_codewords: Vec<usize>,
+    sentinel: usize,
+}
+
+impl Codewords {
+    pub fn new(codewords: Vec<usize>, alt_codewords: Vec<usize>, sentinel: usize) -> Self {
+        if codewords.len() != alt_codewords.len() {
+            panic!("Codewords and alternative codewords must be of same size")
+        }
+        Codewords {
+            codewords: codewords,
+            alt_codewords: alt_codewords,
+            sentinel: sentinel,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn test_codeword_table() {
+        let histogram = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+        let codes = generate_codewords(&histogram);
+        assert_eq!(codes.codewords, [0, 2, 12, 26, 27, 28, 29, 30, 62, 63]);
+        assert_eq!(codes.alt_codewords, [0, 32, 48, 52, 54, 56, 58, 60, 62, 63]);
+        assert_eq!(codes.sentinel, 64);
+    }
+
     #[test]
     fn test_codeword_lengths_inplace() {
         let mut elements: HashMap<Vec<usize>, Vec<usize>> = HashMap::new();

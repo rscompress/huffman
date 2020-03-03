@@ -91,8 +91,8 @@ impl<W: Write> Write for Encoder<W> {
     }
 }
 
-/// Calculate length of binary representation of `val`
-fn calculate_length(val: usize) -> usize {
+/// Calculate bit length of `val`
+pub fn calculate_length(val: usize) -> usize {
     if val == 0 {
         return 1usize;
     }

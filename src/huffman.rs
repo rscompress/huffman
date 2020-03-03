@@ -124,6 +124,21 @@ fn generate_codewords(histogram: &[usize]) -> Codewords {
     Codewords::new(li_small_codes, li_big_codes, sentinel)
 }
 
+pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
+    let hist = enumerate(histogram);
+    let sorted_tuple = sort_by_value(hist);
+    let mut weights = extract_values(&sorted_tuple);
+    calculate_codeword_length_inplace(&mut weights);
+    let (codes, _) = calculate_codewords_based_on_length(&weights);
+
+    let mut extended_codes = [0usize; 256];
+    for (code, (key,_)) in codes.iter().zip(sorted_tuple.iter()) {
+        extended_codes[*key as usize] = *code;
+    }
+    extended_codes
+}
+
+
 struct Codewords {
     codewords: Vec<usize>,
     alt_codewords: Vec<usize>,
@@ -147,6 +162,25 @@ impl Codewords {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn test_extended_codewords_sorted_input() {
+        let histogram = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+        let ext_codes = generate_extended_codewords(&histogram);
+        assert_eq!(ext_codes[0], 0);
+        assert_eq!(ext_codes[1], 2);
+        assert_eq!(ext_codes[2], 12);
+        assert_eq!(ext_codes[3], 26);
+        // The following cases are necessary since the algorithm is not
+        // deterministic if the count is the same between values
+        assert!(ext_codes[4] <= 30 && ext_codes[4] >= 27);
+        assert!(ext_codes[5] <= 30 && ext_codes[5] >= 27);
+        assert!(ext_codes[6] <= 30 && ext_codes[6] >= 27);
+        assert!(ext_codes[7] >= 30 && ext_codes[7] <= 63);
+        assert!(ext_codes[8] >= 30 && ext_codes[8] <= 63);
+        assert!(ext_codes[9] >= 30 && ext_codes[9] <= 63);
+    }
+
 
     #[test]
     fn test_codeword_table() {

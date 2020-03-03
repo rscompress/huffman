@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use rscompress_huffman::stats::generate_histogram;
 use rscompress_huffman::huffman::generate_extended_codewords;
-use rscompress_huffman::encode::calculate_length;
+use rscompress_huffman::encode::{calculate_length, Encoder};
 use rscompress_huffman::BUF;
 
 use env_logger; // trace < debug < info < warn < error < off
@@ -24,13 +24,14 @@ fn main() {
     let dfile = File::create(destination).expect("Failed to create destination file");
 
     let mut reader = BufReader::with_capacity(BUF, sfile);
-    let mut writer = BufWriter::with_capacity(BUF, dfile);
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) }
 
     let histogram = generate_histogram(&mut reader);
     let codewords = generate_extended_codewords(&histogram);
 
+    // let mut writer = Encoder::new(dfile, codewords);
+    let mut writer = BufWriter::with_capacity(BUF, dfile);
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;

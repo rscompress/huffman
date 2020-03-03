@@ -9,11 +9,18 @@ use rscompress_huffman::huffman::generate_extended_codewords;
 use rscompress_huffman::encode::calculate_length;
 use rscompress_huffman::BUF;
 
+use env_logger; // trace < debug < info < warn < error < off
+use log::{info, log_enabled};
+
 /// Main function (duh!)
 fn main() {
+    env_logger::init();
     let source = env::args().nth(1).expect("No source file found!");
-    let sfile = File::open(source).expect("Failed to open source file");
     let destination = env::args().nth(2).expect("No destination file found");
+    info!("Starting compression");
+    info!("Input:  {}", &source);
+    info!("Output: {}", &destination);
+    let sfile = File::open(source).expect("Failed to open source file");
     let dfile = File::create(destination).expect("Failed to create destination file");
 
     let mut reader = BufReader::with_capacity(BUF, sfile);
@@ -24,20 +31,19 @@ fn main() {
     let histogram = generate_histogram(&mut reader);
     let codewords = generate_extended_codewords(&histogram);
 
-    // Start information about compressed file
-    let mut original_file_size = 0;
-    let mut huffmann_file_size = 0;
-    for (word,(count,code)) in histogram.iter().zip(codewords.iter()).enumerate() {
-        println!("'{:08b}' -> '{:>8b}' ({}x)", word, code, count);
-        original_file_size += count;
-        huffmann_file_size += count * calculate_length(word);
+    if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
+        let mut original_file_size = 0;
+        let mut huffmann_file_size = 0;
+        for (count,code) in histogram.iter().zip(codewords.iter()) {
+            original_file_size += count;
+            huffmann_file_size += count * calculate_length(*code);
+        }
+        huffmann_file_size = huffmann_file_size / 8 + 1;
+        info!("Original file size: {}", original_file_size);
+        info!("Huffman file size:  {}", huffmann_file_size);
+        info!("Compression factor: {:.2}", original_file_size as f32 / huffmann_file_size as f32);
+        info!("Compression ratio:  {:.2}", huffmann_file_size as f32 / original_file_size as f32);
     }
-    huffmann_file_size = huffmann_file_size / 8 + 1;
-    println!("Original file size: {}", original_file_size);
-    println!(" Huffman file size: {}", huffmann_file_size);
-    println!("Compression factor: {:.2}", original_file_size as f32 / huffmann_file_size as f32);
-    println!(" Compression ratio: {:.2}", huffmann_file_size as f32 / original_file_size as f32);
-    // End information about compressed file
 
     reader.seek(std::io::SeekFrom::Start(0)).expect("Can not move to start of file");
     loop {

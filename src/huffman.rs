@@ -59,15 +59,6 @@ fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     }
 }
 
-/// Calculates the same codeword lengths as `calculate_codeword_length_inplace`.
-/// But using a new output array. It leaves the histogram untouched.
-fn calculate_codeword_length(histogram: &[usize]) -> Vec<usize> {
-    let mut codeword_length: Vec<usize> = vec![0usize; histogram.len()];
-    codeword_length.clone_from_slice(histogram);
-    calculate_codeword_length_inplace(&mut codeword_length);
-    codeword_length
-}
-
 fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
     let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256);
     for (i, val) in array.iter().enumerate() {
@@ -105,25 +96,14 @@ fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<us
     (li_small_codes, li_big_codes)
 }
 
-/// Generate codewords from a histogram.
+/// Generate extended codewords from a histogram.
 ///
 /// # Steps
 /// 1. Enumerate the histogram
 /// 2. Sort the enumerated histogram by count
 /// 3. Extract the counts of the sorted histogram
-fn generate_codewords(histogram: &[usize]) -> Codewords {
-    let hist = enumerate(histogram);
-    let sorted_tuple = sort_by_value(hist); // FIXME: It might be possible to split into two Vectors
-    let mut weights = extract_values(&sorted_tuple);
-
-    calculate_codeword_length_inplace(&mut weights[..]);
-
-    let sentinel = 1 << weights[weights.len() - 1];
-    let (li_small_codes, li_big_codes) = calculate_codewords_based_on_length(&weights);
-
-    Codewords::new(li_small_codes, li_big_codes, sentinel)
-}
-
+/// 4. Calculate codeword lengths inplace
+/// 5. Generate canonical codewords based on length
 pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
     let hist = enumerate(histogram);
     let sorted_tuple = sort_by_value(hist);
@@ -136,26 +116,6 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
         extended_codes[*key as usize] = *code;
     }
     extended_codes
-}
-
-
-struct Codewords {
-    codewords: Vec<usize>,
-    alt_codewords: Vec<usize>,
-    sentinel: usize,
-}
-
-impl Codewords {
-    pub fn new(codewords: Vec<usize>, alt_codewords: Vec<usize>, sentinel: usize) -> Self {
-        if codewords.len() != alt_codewords.len() {
-            panic!("Codewords and alternative codewords must be of same size")
-        }
-        Codewords {
-            codewords: codewords,
-            alt_codewords: alt_codewords,
-            sentinel: sentinel,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -171,6 +131,7 @@ mod tests {
         assert_eq!(ext_codes[1], 2);
         assert_eq!(ext_codes[2], 12);
         assert_eq!(ext_codes[3], 26);
+
         // The following cases are necessary since the algorithm is not
         // deterministic if the count is the same between values
         assert!(ext_codes[4] <= 30 && ext_codes[4] >= 27);
@@ -179,16 +140,6 @@ mod tests {
         assert!(ext_codes[7] >= 30 && ext_codes[7] <= 63);
         assert!(ext_codes[8] >= 30 && ext_codes[8] <= 63);
         assert!(ext_codes[9] >= 30 && ext_codes[9] <= 63);
-    }
-
-
-    #[test]
-    fn test_codeword_table() {
-        let histogram = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
-        let codes = generate_codewords(&histogram);
-        assert_eq!(codes.codewords, [0, 2, 12, 26, 27, 28, 29, 30, 62, 63]);
-        assert_eq!(codes.alt_codewords, [0, 32, 48, 52, 54, 56, 58, 60, 62, 63]);
-        assert_eq!(codes.sentinel, 64);
     }
 
     #[test]
@@ -205,22 +156,6 @@ mod tests {
         for (expected, hist) in elements.iter_mut() {
             calculate_codeword_length_inplace(hist);
             assert_eq!(hist, expected);
-        }
-    }
-    #[test]
-    fn test_codeword_lengths() {
-        let mut elements: HashMap<Vec<usize>, Vec<usize>> = HashMap::new();
-        elements.insert(vec![1, 2, 4, 4, 4, 4], vec![10, 6, 2, 1, 1, 1]);
-        elements.insert(
-            vec![1, 2, 4, 5, 5, 5, 5, 5, 6, 6],
-            vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1],
-        );
-        elements.insert(vec![2, 2, 2, 3, 4, 4], vec![99, 99, 99, 1, 1, 1]);
-        elements.insert(vec![2, 2, 3, 3, 3, 3], vec![8, 7, 6, 5, 4, 3]);
-
-        for (expected, hist) in elements.iter() {
-            let result = calculate_codeword_length(hist);
-            assert_eq!(&result, expected);
         }
     }
 }

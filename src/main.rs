@@ -56,4 +56,5 @@ fn main() {
             Err(err) => panic!("Problem with reading source file: {:?}", err),
         };
     }
+    writer.flush().expect("Could not flush file to disk!");
 }

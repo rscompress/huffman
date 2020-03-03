@@ -1,6 +1,7 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
 use std::collections::HashMap;
+use log::debug;
 
 /// Calculate the length of the codewords for each byte in place.
 /// This will transform the histogram into a codeword length array for each
@@ -113,6 +114,7 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
 
     let mut extended_codes = [0usize; 256];
     for (code, (key,_)) in codes.iter().zip(sorted_tuple.iter()) {
+        debug!("Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]", *key, *code);
         extended_codes[*key as usize] = *code;
     }
     extended_codes

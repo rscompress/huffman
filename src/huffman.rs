@@ -63,7 +63,8 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
 
 pub fn sort_by_value(store: &[usize]) -> Vec<(u8, usize)> {
     let mut sorted_tuple: Vec<_> = store.into_iter().enumerate().filter(|(_,b)| **b > 0 as usize).map(|(a,b)| (a as u8, *b)).collect();
-    sorted_tuple.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_tuple.sort_by_key(|a| a.1);
+    sorted_tuple.reverse();
     sorted_tuple
 }
 

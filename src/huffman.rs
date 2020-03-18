@@ -6,7 +6,7 @@ use log::debug;
 /// Calculate the length of the codewords for each byte in place.
 /// This will transform the histogram into a codeword length array for each
 /// byte.
-fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
+pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     let mut leaf = (histogram.len() - 1) as i32;
     let mut root = histogram.len() - 1;
 
@@ -60,27 +60,27 @@ fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     }
 }
 
-fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
+pub fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
     let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256);
-    for (i, val) in array.iter().enumerate() {
-        hist.insert(i as u8, *val);
+    for (i, &val) in array.iter().enumerate() {
+        hist.insert(i as u8, val);
     }
     hist
 }
 
-fn sort_by_value(store: HashMap<u8, usize>) -> Vec<(u8, usize)> {
+pub fn sort_by_value(store: &HashMap<u8, usize>) -> Vec<(u8, usize)> {
     let mut sorted_tuple: Vec<_> = store.iter().filter(|a| *a.1 > 0 as usize).collect();
     sorted_tuple.sort_by(|a, b| b.1.cmp(a.1));
     let sorted_tuple = sorted_tuple.iter().map(|(&a, &b)| (a, b)).collect();
     sorted_tuple
 }
 
-fn extract_values(store: &Vec<(u8, usize)>) -> Vec<usize> {
+pub fn extract_values(store: &Vec<(u8, usize)>) -> Vec<usize> {
     let values: Vec<_> = store.iter().map(|(_, b)| *b).collect();
     values
 }
 
-fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<usize>) {
+pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<usize>) {
     let max_wordlen = lengths[lengths.len() - 1];
     let mut li_small_codes: Vec<usize> = vec![0usize; lengths.len()];
     let mut li_big_codes: Vec<usize> = vec![0usize; lengths.len()];
@@ -107,7 +107,7 @@ fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<us
 /// 5. Generate canonical codewords based on length
 pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
     let hist = enumerate(histogram);
-    let sorted_tuple = sort_by_value(hist);
+    let sorted_tuple = sort_by_value(&hist);
     let mut weights = extract_values(&sorted_tuple);
     calculate_codeword_length_inplace(&mut weights);
     let (codes, _) = calculate_codewords_based_on_length(&weights);

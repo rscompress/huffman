@@ -112,7 +112,7 @@ fn benchmark_codeoword_generation_excl1(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(bytes.len() as u64));
     group.bench_function("step_1_sort_by_value", |b|
         b.iter(|| {
-            let sorted_tuple = sort_by_value(&histogram);  // Step 1
+            sort_by_value(&histogram);  // Step 1
         }));
     group.finish();
 }
@@ -129,7 +129,7 @@ fn benchmark_codeoword_generation_excl2(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(bytes.len() as u64));
     group.bench_function("step_2_extract_values", |b|
         b.iter(|| {
-            let mut weights = extract_values(&sorted_tuple);  // Step 2
+            extract_values(&sorted_tuple);  // Step 2
         }));
     group.finish();
 }
@@ -168,7 +168,7 @@ fn benchmark_codeoword_generation_excl4(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(bytes.len() as u64));
     group.bench_function("step_4_calculate_codewords", |b|
         b.iter(|| {
-            let (codes, _) = calculate_codewords_based_on_length(&weights);  // Step 4
+            calculate_codewords_based_on_length(&weights);  // Step 4
         }));
     group.finish();
 }

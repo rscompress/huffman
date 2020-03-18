@@ -1,6 +1,6 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use log::debug;
 
 /// Calculate the length of the codewords for each byte in place.
@@ -61,7 +61,7 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
 }
 
 pub fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
-    let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256);
+    let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256+1);
     for (i, &val) in array.iter().enumerate() {
         hist.insert(i as u8, val);
     }

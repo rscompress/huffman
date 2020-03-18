@@ -106,9 +106,9 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
     let (codes, _) = calculate_codewords_based_on_length(&weights);
 
     let mut extended_codes = [0usize; 256];
-    for (code, (key,_)) in codes.iter().zip(sorted_tuple.iter()) {
-        debug!("Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]", *key, *code);
-        extended_codes[*key as usize] = *code;
+    for (code, (key,_)) in codes.into_iter().zip(sorted_tuple.iter()) {
+        debug!("Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]", *key, code);
+        extended_codes[*key as usize] = code;
     }
     extended_codes
 }

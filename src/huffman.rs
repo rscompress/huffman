@@ -60,18 +60,11 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     }
 }
 
-pub fn enumerate(array: &[usize]) -> HashMap<u8, usize> {
-    let mut hist: HashMap<u8, usize> = HashMap::with_capacity(256+1);
-    for (i, &val) in array.iter().enumerate() {
-        hist.insert(i as u8, val);
-    }
-    hist
-}
 
-pub fn sort_by_value(store: &HashMap<u8, usize>) -> Vec<(u8, usize)> {
-    let mut sorted_tuple: Vec<_> = store.iter().filter(|a| *a.1 > 0 as usize).collect();
+pub fn sort_by_value(store: &[usize]) -> Vec<(u8, usize)> {
+    let mut sorted_tuple: Vec<_> = store.iter().enumerate().filter(|a| *a.1 > 0 as usize).collect();
     sorted_tuple.sort_by(|a, b| b.1.cmp(a.1));
-    let sorted_tuple = sorted_tuple.iter().map(|(&a, &b)| (a, b)).collect();
+    let sorted_tuple = sorted_tuple.iter().map(|(a, b)| (*a as u8, **b)).collect();
     sorted_tuple
 }
 
@@ -106,8 +99,8 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
 /// 4. Calculate codeword lengths inplace
 /// 5. Generate canonical codewords based on length
 pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
-    let hist = enumerate(histogram);
-    let sorted_tuple = sort_by_value(&hist);
+    // let hist = enumerate(histogram);
+    let sorted_tuple = sort_by_value(&histogram);
     let mut weights = extract_values(&sorted_tuple);
     calculate_codeword_length_inplace(&mut weights);
     let (codes, _) = calculate_codewords_based_on_length(&weights);

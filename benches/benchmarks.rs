@@ -278,6 +278,6 @@ criterion_group!(
     io,
     benchmark_io,
 );
-criterion_main!(io);
-// criterion_main!(benches_details);
+// criterion_main!(io);
+criterion_main!(benches_details);
 // criterion_main!(benches, benches_details);

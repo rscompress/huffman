@@ -59,20 +59,27 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     }
 }
 
-pub fn sort_by_value(store: &[usize]) -> Vec<(u8, usize)> {
+pub fn sort_by_value(store: &[usize]) -> Vec<(usize, usize)> {
     assert!(store.len() <= 256);
     let mut sorted_tuple: Vec<_> = store
         .into_iter()
         .enumerate()
         .filter(|(_, b)| **b > 0 as usize)
-        .map(|(a, b)| (a as u8, *b))
+        .map(|(a, b)| (a, *b))
         .collect();
     sorted_tuple.sort_unstable_by_key(|a| a.1);
     sorted_tuple.reverse();
     sorted_tuple
 }
 
-pub fn extract_values(store: &Vec<(u8, usize)>) -> Vec<usize> {
+// pub fn sort_by_value(store: &[usize]) -> Vec<(usize, usize)> {
+//     let mut indices : Vec<_> = (0..store.len()).into_iter().filter(|&c| store[c as usize] > 0).collect();
+//     indices.sort_unstable_by_key(|&i| store[i as usize]);
+//     indices.reverse();
+//     indices.into_iter().map(|i| (i, store[i as usize])).collect()
+// }
+
+pub fn extract_values(store: &Vec<(usize, usize)>) -> Vec<usize> {
     let values: Vec<_> = store.iter().map(|(_, b)| *b).collect();
     values
 }

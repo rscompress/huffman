@@ -7,7 +7,7 @@ use rscompress_huffman::BUF;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
 
 use env_logger; // trace < debug < info < warn < error < off
 use log::{info, log_enabled};
@@ -32,8 +32,8 @@ fn main() {
     info!("Generating codewords...");
     let codewords = generate_extended_codewords(&histogram);
 
-    let mut writer = Encoder::new(dfile, codewords);
-    // let mut writer = BufWriter::with_capacity(BUF, dfile);
+    let w = BufWriter::with_capacity(BUF, dfile);
+    let mut writer = Encoder::new(w, codewords);
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;
@@ -57,12 +57,12 @@ fn main() {
     reader
         .seek(std::io::SeekFrom::Start(0))
         .expect("Can not move to start of file");
+    info!("Starting writing...");
     loop {
         let read_size = reader.read(&mut buffer);
         match read_size {
             Ok(0) => break, // fully read file
             Ok(n) => {
-                info!("Writing {} bytes", n);
                 writer
                     .write(&mut buffer[..n])
                     .expect("Could not write buffer to destination")
@@ -71,4 +71,5 @@ fn main() {
         };
     }
     writer.flush().expect("Could not flush file to disk!");
+    info!("End compression")
 }

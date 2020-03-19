@@ -1,6 +1,5 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
-use hashbrown::HashMap;
 use log::debug;
 
 /// Calculate the length of the codewords for each byte in place.

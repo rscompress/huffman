@@ -212,10 +212,10 @@ criterion_group!(
     benches_details,
     benchmark_codeoword_generation_splits,
     benchmark_codeoword_generation_excl1,
-    benchmark_codeoword_generation_excl2,
-    benchmark_codeoword_generation_excl3,
-    benchmark_codeoword_generation_excl4,
-    benchmark_codeoword_generation_excl5,
+    // benchmark_codeoword_generation_excl2,
+    // benchmark_codeoword_generation_excl3,
+    // benchmark_codeoword_generation_excl4,
+    // benchmark_codeoword_generation_excl5,
 );
 // criterion_main!(benches, benches_details);
 criterion_main!(benches_details);

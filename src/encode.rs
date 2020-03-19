@@ -120,10 +120,12 @@ mod tests {
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
 
-        assert_eq!(enc.inner.get_ref(), &[177, 225, 82, 62, 83, 14, 151, 58, 42]);
+        assert_eq!(
+            enc.inner.get_ref(),
+            &[177, 225, 82, 62, 83, 14, 151, 58, 42]
+        );
         assert_eq!(output_bytes, 9);
     }
-
 
     #[test]
     fn encode_stream() {

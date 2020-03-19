@@ -1,13 +1,13 @@
 //! A command line tool for compressing/decompressing files directly from the
 //! command line.
+use rscompress_huffman::encode::{calculate_length, Encoder};
+use rscompress_huffman::huffman::generate_extended_codewords;
+use rscompress_huffman::stats::generate_histogram;
+use rscompress_huffman::BUF;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use rscompress_huffman::stats::generate_histogram;
-use rscompress_huffman::huffman::generate_extended_codewords;
-use rscompress_huffman::encode::{calculate_length, Encoder};
-use rscompress_huffman::BUF;
 
 use env_logger; // trace < debug < info < warn < error < off
 use log::{info, log_enabled};
@@ -37,26 +37,36 @@ fn main() {
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;
-        for (count,code) in histogram.iter().zip(codewords.iter()) {
+        for (count, code) in histogram.iter().zip(codewords.iter()) {
             original_file_size += count;
             huffmann_file_size += count * calculate_length(*code);
         }
         huffmann_file_size = huffmann_file_size / 8 + 1;
         info!("Original file size: {}", original_file_size);
         info!("Huffman file size:  {}", huffmann_file_size);
-        info!("Compression factor: {:.2}", original_file_size as f32 / huffmann_file_size as f32);
-        info!("Compression ratio:  {:.2}", huffmann_file_size as f32 / original_file_size as f32);
+        info!(
+            "Compression factor: {:.2}",
+            original_file_size as f32 / huffmann_file_size as f32
+        );
+        info!(
+            "Compression ratio:  {:.2}",
+            huffmann_file_size as f32 / original_file_size as f32
+        );
     }
 
-    reader.seek(std::io::SeekFrom::Start(0)).expect("Can not move to start of file");
+    reader
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("Can not move to start of file");
     loop {
         let read_size = reader.read(&mut buffer);
         match read_size {
             Ok(0) => break, // fully read file
             Ok(n) => {
                 info!("Writing {} bytes", n);
-                writer.write(&mut buffer[..n])
-                .expect("Could not write buffer to destination")},
+                writer
+                    .write(&mut buffer[..n])
+                    .expect("Could not write buffer to destination")
+            }
             Err(err) => panic!("Problem with reading source file: {:?}", err),
         };
     }

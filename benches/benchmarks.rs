@@ -71,8 +71,10 @@ fn benchmark_encoding(c: &mut Criterion) {
     group.finish();
 }
 
-
-use rscompress_huffman::huffman::{sort_by_value, extract_values, calculate_codewords_based_on_length, calculate_codeword_length_inplace};
+use rscompress_huffman::huffman::{
+    calculate_codeword_length_inplace, calculate_codewords_based_on_length, extract_values,
+    sort_by_value,
+};
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_codeoword_generation_splits(c: &mut Criterion) {
@@ -83,22 +85,22 @@ fn benchmark_codeoword_generation_splits(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("whole_chain", |b|
+    group.bench_function("whole_chain", |b| {
         b.iter(|| {
-            let sorted_tuple = sort_by_value(&histogram);  // Step 1
-            let mut weights = extract_values(&sorted_tuple);  // Step 2
-            calculate_codeword_length_inplace(&mut weights);  // Step 3
-            let (codes, _) = calculate_codewords_based_on_length(&weights);  // Step 4
+            let sorted_tuple = sort_by_value(&histogram); // Step 1
+            let mut weights = extract_values(&sorted_tuple); // Step 2
+            calculate_codeword_length_inplace(&mut weights); // Step 3
+            let (codes, _) = calculate_codewords_based_on_length(&weights); // Step 4
 
             let mut extended_codes = [0usize; 256];
-            for (code, (key,_)) in codes.iter().zip(sorted_tuple.iter()) {
+            for (code, (key, _)) in codes.iter().zip(sorted_tuple.iter()) {
                 extended_codes[*key as usize] = *code;
             }
             extended_codes
-        }));
+        })
+    });
     group.finish();
 }
-
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_codeoword_generation_excl1(c: &mut Criterion) {
@@ -110,10 +112,11 @@ fn benchmark_codeoword_generation_excl1(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("step_1_sort_by_value", |b|
+    group.bench_function("step_1_sort_by_value", |b| {
         b.iter(|| {
-            sort_by_value(&histogram);  // Step 1
-        }));
+            sort_by_value(&histogram); // Step 1
+        })
+    });
     group.finish();
 }
 
@@ -123,17 +126,17 @@ fn benchmark_codeoword_generation_excl2(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    let sorted_tuple = sort_by_value(&histogram);  // Step 1
+    let sorted_tuple = sort_by_value(&histogram); // Step 1
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("step_2_extract_values", |b|
+    group.bench_function("step_2_extract_values", |b| {
         b.iter(|| {
-            extract_values(&sorted_tuple);  // Step 2
-        }));
+            extract_values(&sorted_tuple); // Step 2
+        })
+    });
     group.finish();
 }
-
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_codeoword_generation_excl3(c: &mut Criterion) {
@@ -141,18 +144,18 @@ fn benchmark_codeoword_generation_excl3(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    let sorted_tuple = sort_by_value(&histogram);  // Step 1
-    let mut weights = extract_values(&sorted_tuple);  // Step 2
+    let sorted_tuple = sort_by_value(&histogram); // Step 1
+    let mut weights = extract_values(&sorted_tuple); // Step 2
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("step_3_calculate_lengths", |b|
+    group.bench_function("step_3_calculate_lengths", |b| {
         b.iter(|| {
-            calculate_codeword_length_inplace(&mut weights);  // Step 3
-        }));
+            calculate_codeword_length_inplace(&mut weights); // Step 3
+        })
+    });
     group.finish();
 }
-
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_codeoword_generation_excl4(c: &mut Criterion) {
@@ -160,19 +163,19 @@ fn benchmark_codeoword_generation_excl4(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    let sorted_tuple = sort_by_value(&histogram);  // Step 1
-    let mut weights = extract_values(&sorted_tuple);  // Step 2
-    calculate_codeword_length_inplace(&mut weights);  // Step 3
+    let sorted_tuple = sort_by_value(&histogram); // Step 1
+    let mut weights = extract_values(&sorted_tuple); // Step 2
+    calculate_codeword_length_inplace(&mut weights); // Step 3
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("step_4_calculate_codewords", |b|
+    group.bench_function("step_4_calculate_codewords", |b| {
         b.iter(|| {
-            calculate_codewords_based_on_length(&weights);  // Step 4
-        }));
+            calculate_codewords_based_on_length(&weights); // Step 4
+        })
+    });
     group.finish();
 }
-
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
@@ -180,26 +183,24 @@ fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    let sorted_tuple = sort_by_value(&histogram);  // Step 1
-    let mut weights = extract_values(&sorted_tuple);  // Step 2
-    calculate_codeword_length_inplace(&mut weights);  // Step 3
-    let (codes, _) = calculate_codewords_based_on_length(&weights);  // Step 4
+    let sorted_tuple = sort_by_value(&histogram); // Step 1
+    let mut weights = extract_values(&sorted_tuple); // Step 2
+    calculate_codeword_length_inplace(&mut weights); // Step 3
+    let (codes, _) = calculate_codewords_based_on_length(&weights); // Step 4
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
-    group.bench_function("step_5_generate_codelist", |b|
+    group.bench_function("step_5_generate_codelist", |b| {
         b.iter(|| {
             let mut extended_codes = [0usize; 256];
-            for (code, (key,_)) in codes.iter().zip(sorted_tuple.iter()) {
+            for (code, (key, _)) in codes.iter().zip(sorted_tuple.iter()) {
                 extended_codes[*key as usize] = *code;
             }
             extended_codes
-        }));
+        })
+    });
     group.finish();
 }
-
-
-
 
 criterion_group!(
     benches,

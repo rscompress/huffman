@@ -1,7 +1,7 @@
 //! This module implements some statistical helper functions.
 //! Mostly due to the histogram needed for defining the Huffman tree.
-use std::io::Read;
 use crate::BUF;
+use std::io::Read;
 
 fn update_histogram(take: usize, buffer: &[u8], histogram: &mut [usize]) {
     for byte in buffer.iter().take(take) {
@@ -29,8 +29,8 @@ pub fn generate_histogram(reader: &mut impl Read) -> [usize; 256] {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use crate::stats::generate_histogram;
+    use std::io::Cursor;
 
     #[test]
     fn testing_histogram() {
@@ -43,6 +43,5 @@ mod tests {
         assert_eq!(hist[2], 1);
         assert_eq!(hist[0], 1);
         assert_eq!(hist[34], 3);
-
     }
 }

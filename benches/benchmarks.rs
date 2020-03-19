@@ -25,6 +25,62 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.finish();
 }
 
+
+use std::io::BufReader;
+use std::fs::{File, metadata};
+
+fn benchmark_io(c: &mut Criterion) {
+    let source = String::from("test.tmp");
+    let destination = String::from("/tmp/bla.tmp");
+    let md = metadata("test.tmp").expect("Nooo");
+    let sfile = File::open(source).expect("Failed to open source file");
+    let dfile = File::create(destination).expect("Failed to create destination file");
+    let BUF = 4096;
+
+    let mut reader = BufReader::with_capacity(BUF, sfile);
+
+    let histogram = generate_histogram(&mut reader);
+    let codewords = generate_extended_codewords(&histogram);
+
+    let mut writer = Encoder::new(dfile, codewords);
+    reader
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("Can not move to start of file");
+
+    let mut group = c.benchmark_group("throughput_encoding");
+    group.throughput(Throughput::Bytes(md.len() as u64));
+    group.bench_function("I/O", |b| {
+        b.iter(|| {
+            full_io(&mut reader, &mut writer);
+        })
+    });
+    group.finish();
+}
+
+
+fn full_io(reader: &mut impl BufRead, writer: &mut impl Write) {
+    let BUF = 4096;
+    let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
+    unsafe { buffer.set_len(BUF) }
+
+    loop {
+        let read_size = reader.read(&mut buffer);
+        match read_size {
+            Ok(0) => break, // fully read file
+            Ok(n) => {
+                writer
+                    .write(&mut buffer[..n])
+                    .expect("Could not write buffer to destination")
+            }
+            Err(err) => panic!("Problem with reading source file: {:?}", err),
+        };
+    }
+    writer.flush().expect("Could not flush file to disk!");
+}
+
+
+
+
 // Example for `c.bench_function` usage for throughput analysis
 fn benchmark_histogram_generation(c: &mut Criterion) {
     let bytes: Vec<u8> = vec![
@@ -218,5 +274,10 @@ criterion_group!(
     benchmark_codeoword_generation_excl4,
     benchmark_codeoword_generation_excl5,
 );
-criterion_main!(benches, benches_details);
+criterion_group!(
+    io,
+    benchmark_io,
+);
+criterion_main!(io);
 // criterion_main!(benches_details);
+// criterion_main!(benches, benches_details);

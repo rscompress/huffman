@@ -13,7 +13,7 @@
 //! byte and saves it on disk.
 
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub const BUF: usize = 4096;
 pub mod encode;

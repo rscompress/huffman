@@ -62,11 +62,9 @@ fn main() {
         let read_size = reader.read(&mut buffer);
         match read_size {
             Ok(0) => break, // fully read file
-            Ok(n) => {
-                writer
-                    .write(&mut buffer[..n])
-                    .expect("Could not write buffer to destination")
-            }
+            Ok(n) => writer
+                .write(&mut buffer[..n])
+                .expect("Could not write buffer to destination"),
             Err(err) => panic!("Problem with reading source file: {:?}", err),
         };
     }

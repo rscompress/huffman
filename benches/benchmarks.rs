@@ -25,9 +25,8 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.finish();
 }
 
-
+use std::fs::{metadata, File};
 use std::io::BufReader;
-use std::fs::{File, metadata};
 
 fn benchmark_io(c: &mut Criterion) {
     let source = String::from("test.tmp");
@@ -57,7 +56,6 @@ fn benchmark_io(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn full_io(reader: &mut impl BufRead, writer: &mut impl Write) {
     let buf = 4096;
     let mut buffer: Vec<u8> = Vec::with_capacity(buf);
@@ -67,19 +65,14 @@ fn full_io(reader: &mut impl BufRead, writer: &mut impl Write) {
         let read_size = reader.read(&mut buffer);
         match read_size {
             Ok(0) => break, // fully read file
-            Ok(n) => {
-                writer
-                    .write(&mut buffer[..n])
-                    .expect("Could not write buffer to destination")
-            }
+            Ok(n) => writer
+                .write(&mut buffer[..n])
+                .expect("Could not write buffer to destination"),
             Err(err) => panic!("Problem with reading source file: {:?}", err),
         };
     }
     writer.flush().expect("Could not flush file to disk!");
 }
-
-
-
 
 // Example for `c.bench_function` usage for throughput analysis
 fn benchmark_histogram_generation(c: &mut Criterion) {
@@ -274,8 +267,6 @@ criterion_group!(
     benchmark_codeoword_generation_excl4,
     benchmark_codeoword_generation_excl5,
 );
-criterion_group!(
-    io,
-    benchmark_io,
-);
-criterion_main!(benches_details, io, benches);
+criterion_group!(io, benchmark_io);
+
+criterion_main!(benches_details);

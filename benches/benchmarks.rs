@@ -35,9 +35,9 @@ fn benchmark_io(c: &mut Criterion) {
     let md = metadata("test.tmp").expect("Nooo");
     let sfile = File::open(source).expect("Failed to open source file");
     let dfile = File::create(destination).expect("Failed to create destination file");
-    let BUF = 4096;
+    let buf = 4096;
 
-    let mut reader = BufReader::with_capacity(BUF, sfile);
+    let mut reader = BufReader::with_capacity(buf, sfile);
 
     let histogram = generate_histogram(&mut reader);
     let codewords = generate_extended_codewords(&histogram);
@@ -59,9 +59,9 @@ fn benchmark_io(c: &mut Criterion) {
 
 
 fn full_io(reader: &mut impl BufRead, writer: &mut impl Write) {
-    let BUF = 4096;
-    let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
-    unsafe { buffer.set_len(BUF) }
+    let buf = 4096;
+    let mut buffer: Vec<u8> = Vec::with_capacity(buf);
+    unsafe { buffer.set_len(buf) }
 
     loop {
         let read_size = reader.read(&mut buffer);

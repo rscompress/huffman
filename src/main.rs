@@ -3,7 +3,7 @@
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use rscompress_huffman::stats::generate_histogram;
 use rscompress_huffman::huffman::generate_extended_codewords;
 use rscompress_huffman::encode::{calculate_length, Encoder};
@@ -27,7 +27,9 @@ fn main() {
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) }
 
+    info!("Generating histogram...");
     let histogram = generate_histogram(&mut reader);
+    info!("Generating codewords...");
     let codewords = generate_extended_codewords(&histogram);
 
     let mut writer = Encoder::new(dfile, codewords);

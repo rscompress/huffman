@@ -24,15 +24,17 @@ use std::io::{Error, ErrorKind, Write};
 pub struct Encoder<W: Write> {
     pub inner: W,
     codewords: [usize; 256],
+    length: Vec<usize>,
     buffer: u32,
     remaining_bits: usize,
 }
 
 impl<W: Write> Encoder<W> {
     /// Generate a new Encoder instance
-    pub fn new(writer: W, codewords: [usize; 256]) -> Encoder<W> {
+    pub fn new(writer: W, codewords: [usize; 256], length: Vec<usize>) -> Encoder<W> {
         Encoder {
             inner: writer,
+            length: length,
             codewords: codewords,
             buffer: 0x0000_0000,
             remaining_bits: 32,
@@ -44,7 +46,7 @@ impl<W: Write> Write for Encoder<W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
         for val in buf.iter() {
-            let codelen = calculate_length(self.codewords[*val as usize]);
+            let codelen = self.length[*val as usize];
             if codelen > 32 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"));
             }
@@ -113,10 +115,12 @@ mod tests {
     fn encode_numbers() {
         let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
         let mut codewords = [0usize; 256];
+        let mut length = vec![0usize; 256];
         for word in words.iter() {
             codewords[*word as usize] = *word as usize;
+            length[*word as usize] = calculate_length(*word as usize);
         }
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
 
@@ -130,10 +134,14 @@ mod tests {
     #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
+        let mut length = Vec::new();
         codewords[0] = 0;
         codewords[1] = 3;
         codewords[2] = 342;
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords);
+        length.push(calculate_length(0));
+        length.push(calculate_length(3));
+        length.push(calculate_length(342));
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");
 

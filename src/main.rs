@@ -30,10 +30,10 @@ fn main() {
     info!("Generating histogram...");
     let histogram = generate_histogram(&mut reader);
     info!("Generating codewords...");
-    let codewords = generate_extended_codewords(&histogram);
+    let (codewords, length) = generate_extended_codewords(&histogram);
 
     let w = BufWriter::with_capacity(BUF, dfile);
-    let mut writer = Encoder::new(w, codewords);
+    let mut writer = Encoder::new(w, codewords, length);
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;

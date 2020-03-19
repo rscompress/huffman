@@ -17,8 +17,8 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.bench_function("whole_chain", |b| {
         b.iter(|| {
             let histogram = generate_histogram(&mut bytes.as_slice());
-            let codewords = generate_extended_codewords(&histogram);
-            let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords);
+            let (codewords, lengths) = generate_extended_codewords(&histogram);
+            let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords, lengths);
             writer.write(bytes.as_slice())
         })
     });
@@ -39,9 +39,9 @@ fn benchmark_io(c: &mut Criterion) {
     let mut reader = BufReader::with_capacity(buf, sfile);
 
     let histogram = generate_histogram(&mut reader);
-    let codewords = generate_extended_codewords(&histogram);
+    let (codewords, lengths) = generate_extended_codewords(&histogram);
 
-    let mut writer = Encoder::new(dfile, codewords);
+    let mut writer = Encoder::new(dfile, codewords, lengths);
     reader
         .seek(std::io::SeekFrom::Start(0))
         .expect("Can not move to start of file");
@@ -111,8 +111,8 @@ fn benchmark_encoding(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    let codewords = generate_extended_codewords(&histogram);
-    let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords);
+    let (codewords, lengths) = generate_extended_codewords(&histogram);
+    let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords, lengths);
 
     let mut group = c.benchmark_group("throughput_encoding");
     group.throughput(Throughput::Bytes(bytes.len() as u64));

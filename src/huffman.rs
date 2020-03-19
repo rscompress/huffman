@@ -109,7 +109,7 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
 /// 3. Extract the counts of the sorted histogram
 /// 4. Calculate codeword lengths inplace
 /// 5. Generate canonical codewords based on length
-pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
+pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], Vec<usize>) {
     // let hist = enumerate(histogram);
     let sorted_tuple = sort_by_value(&histogram);
     let mut weights = extract_values(&sorted_tuple);
@@ -124,7 +124,7 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> [usize; 256] {
         );
         extended_codes[*key as usize] = code;
     }
-    extended_codes
+    (extended_codes, weights)
 }
 
 #[cfg(test)]
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn test_extended_codewords_sorted_input() {
         let histogram = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
-        let ext_codes = generate_extended_codewords(&histogram);
+        let (ext_codes, _) = generate_extended_codewords(&histogram);
         assert_eq!(ext_codes[0], 0);
         assert_eq!(ext_codes[1], 2);
         assert_eq!(ext_codes[2], 12);

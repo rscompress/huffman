@@ -24,14 +24,14 @@ use std::io::{Error, ErrorKind, Write};
 pub struct Encoder<W: Write> {
     pub inner: W,
     codewords: [usize; 256],
-    length: Vec<usize>,
+    length: [usize; 256],
     buffer: u32,
     remaining_bits: usize,
 }
 
 impl<W: Write> Encoder<W> {
     /// Generate a new Encoder instance
-    pub fn new(writer: W, codewords: [usize; 256], length: Vec<usize>) -> Encoder<W> {
+    pub fn new(writer: W, codewords: [usize; 256], length: [usize; 256]) -> Encoder<W> {
         Encoder {
             inner: writer,
             length,
@@ -127,7 +127,7 @@ mod tests {
     fn encode_numbers() {
         let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
         let mut codewords = [0usize; 256];
-        let mut length = vec![0usize; 256];
+        let mut length = [0usize; 256];
         for word in words.iter() {
             codewords[*word as usize] = *word as usize;
             length[*word as usize] = calculate_length(*word as usize);
@@ -146,13 +146,13 @@ mod tests {
     #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
-        let mut length = Vec::new();
+        let length = [0usize;256];
         codewords[0] = 0;
         codewords[1] = 3;
         codewords[2] = 342;
-        length.push(calculate_length(0));
-        length.push(calculate_length(3));
-        length.push(calculate_length(342));
+        codewords[0] = calculate_length(0);
+        codewords[1] = calculate_length(3);
+        codewords[2] = calculate_length(342);
         let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");

@@ -104,6 +104,8 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
     (li_small_codes, li_big_codes)
 }
 
+use crate::encode::calculate_length;
+
 /// Generate extended codewords from a histogram.
 ///
 /// # Steps
@@ -112,7 +114,7 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
 /// 3. Extract the counts of the sorted histogram
 /// 4. Calculate codeword lengths inplace
 /// 5. Generate canonical codewords based on length
-pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], Vec<usize>) {
+pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], [usize; 256]) {
     // let hist = enumerate(histogram);
     let sorted_tuple = sort_by_value(&histogram);
     let mut weights = extract_values(&sorted_tuple);
@@ -120,14 +122,16 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], Vec<us
     let (codes, _) = calculate_codewords_based_on_length(&weights);
 
     let mut extended_codes = [0usize; 256];
+    let mut length = [1usize; 256];
     for (code, (key, _)) in codes.into_iter().zip(sorted_tuple.into_iter()) {
         debug!(
             "Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]",
             key, code
         );
         extended_codes[key as usize] = code;
+        length[key as usize] = calculate_length(code);
     }
-    (extended_codes, weights)
+    (extended_codes, length)
 }
 
 #[cfg(test)]

@@ -42,31 +42,43 @@ impl<W: Write> Encoder<W> {
     }
 }
 
+impl<W: Write> Encoder<W> {
+    fn put(&mut self)  -> std::io::Result<usize> {
+        let output = (self.buffer & 0xFF00_0000 >> 24) as u8;
+        self.inner.write(&[output])?;
+        self.buffer <<= 8;
+        self.remaining_bits += 8;
+        Ok(1)
+    }
+    fn double(&mut self) -> std::io::Result<usize>  {
+        self.inner.write(&[
+            ((self.buffer & 0xFF00_0000) >> 24) as u8,
+            ((self.buffer & 0x00FF_0000) >> 16) as u8,
+        ])?;
+        self.buffer <<= 16;
+        self.remaining_bits += 16;
+        Ok(2)
+    }
+    fn update_buffer(&mut self, val: usize) {
+        self.buffer += (self.codewords[val] << self.remaining_bits) as u32;
+    }
+}
+
 impl<W: Write> Write for Encoder<W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
-        for val in buf.iter() {
+        for val in buf.into_iter() {
             let codelen = self.length[*val as usize];
             if codelen > 32 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"));
             }
             while codelen >= self.remaining_bits {
-                let output = (self.buffer & 0xFF00_0000 >> 24) as u8;
-                self.inner.write(&[output])?;
-                self.buffer <<= 8;
-                self.remaining_bits += 8;
-                writeout += 1;
+                writeout += self.put()?;
             }
             self.remaining_bits -= codelen;
-            self.buffer += (self.codewords[*val as usize] << self.remaining_bits) as u32;
+            self.update_buffer(*val as usize);
             if self.buffer & 0x0000_FFFF > 0 {
-                self.inner.write(&[
-                    ((self.buffer & 0xFF00_0000) >> 24) as u8,
-                    ((self.buffer & 0x00FF_0000) >> 16) as u8,
-                ])?;
-                writeout += 2;
-                self.buffer <<= 16;
-                self.remaining_bits += 16;
+                writeout += self.double()?;
             }
         }
 

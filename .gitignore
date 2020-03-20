@@ -4,3 +4,4 @@ Cargo.lock
 *.svg
 *.data
 *.data.old
+**/massif.out.*

@@ -61,14 +61,15 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
 
 pub fn sort_by_value(store: &[usize]) -> Vec<(usize, usize)> {
     assert!(store.len() <= 256);
-    let mut sorted_tuple: Vec<_> = store
+    let mut sorted_tuple: Vec<(usize, usize)> = vec![];
+    sorted_tuple.reserve_exact(256);
+    sorted_tuple.extend(store
         .into_iter()
         .enumerate()
         .filter(|(_, b)| **b > 0 as usize)
-        .map(|(a, b)| (a, *b))
-        .collect();
-    sorted_tuple.sort_unstable_by_key(|a| a.1);
-    sorted_tuple.reverse();
+        .map(|(a, b)| (a, *b)));
+    sorted_tuple.sort_unstable_by_key(|a| std::cmp::Reverse(a.1));
+    // sorted_tuple.reverse();
     sorted_tuple
 }
 

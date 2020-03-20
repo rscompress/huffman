@@ -32,7 +32,7 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     // Phase 2
     histogram[1] = 0;
     let mut next = 2;
-    while next <= histogram.len() - 1 {
+    while next < histogram.len() {
         histogram[next] = histogram[histogram[next]] + 1;
         next += 1;
     }
@@ -63,11 +63,13 @@ pub fn sort_by_value(store: &[usize]) -> Vec<(usize, usize)> {
     assert!(store.len() <= 256);
     let mut sorted_tuple: Vec<(usize, usize)> = vec![];
     sorted_tuple.reserve_exact(256);
-    sorted_tuple.extend(store
-        .into_iter()
-        .enumerate()
-        .filter(|(_, b)| **b > 0 as usize)
-        .map(|(a, b)| (a, *b)));
+    sorted_tuple.extend(
+        store
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| **b > 0 as usize)
+            .map(|(a, b)| (a, *b)),
+    );
     sorted_tuple.sort_unstable_by_key(|a| std::cmp::Reverse(a.1));
     // sorted_tuple.reverse();
     sorted_tuple
@@ -80,7 +82,7 @@ pub fn sort_by_value(store: &[usize]) -> Vec<(usize, usize)> {
 //     indices.into_iter().map(|i| (i, store[i as usize])).collect()
 // }
 
-pub fn extract_values(store: &Vec<(usize, usize)>) -> Vec<usize> {
+pub fn extract_values(store: &[(usize, usize)]) -> Vec<usize> {
     let values: Vec<_> = store.iter().map(|(_, b)| *b).collect();
     values
 }

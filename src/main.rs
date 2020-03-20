@@ -63,7 +63,7 @@ fn main() {
         match read_size {
             Ok(0) => break, // fully read file
             Ok(n) => writer
-                .write(&mut buffer[..n])
+                .write(&buffer[..n])
                 .expect("Could not write buffer to destination"),
             Err(err) => panic!("Problem with reading source file: {:?}", err),
         };

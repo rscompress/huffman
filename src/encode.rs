@@ -34,8 +34,8 @@ impl<W: Write> Encoder<W> {
     pub fn new(writer: W, codewords: [usize; 256], length: Vec<usize>) -> Encoder<W> {
         Encoder {
             inner: writer,
-            length: length,
-            codewords: codewords,
+            length,
+            codewords,
             buffer: 0x0000_0000,
             remaining_bits: 32,
         }
@@ -43,21 +43,21 @@ impl<W: Write> Encoder<W> {
 }
 
 impl<W: Write> Encoder<W> {
-    fn put(&mut self)  -> std::io::Result<usize> {
+    fn put(&mut self) -> std::io::Result<usize> {
         let output = (self.buffer & 0xFF00_0000 >> 24) as u8;
-        self.inner.write(&[output])?;
+        let no = self.inner.write(&[output])?;
         self.buffer <<= 8;
         self.remaining_bits += 8;
-        Ok(1)
+        Ok(no)
     }
-    fn double(&mut self) -> std::io::Result<usize>  {
-        self.inner.write(&[
+    fn double(&mut self) -> std::io::Result<usize> {
+        let no = self.inner.write(&[
             ((self.buffer & 0xFF00_0000) >> 24) as u8,
             ((self.buffer & 0x00FF_0000) >> 16) as u8,
         ])?;
         self.buffer <<= 16;
         self.remaining_bits += 16;
-        Ok(2)
+        Ok(no)
     }
     fn update_buffer(&mut self, val: usize) {
         self.buffer += (self.codewords[val] << self.remaining_bits) as u32;
@@ -67,7 +67,7 @@ impl<W: Write> Encoder<W> {
 impl<W: Write> Write for Encoder<W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
-        for val in buf.into_iter() {
+        for val in buf.iter() {
             let codelen = self.length[*val as usize];
             if codelen > 32 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"));
@@ -83,11 +83,11 @@ impl<W: Write> Write for Encoder<W> {
         }
 
         if self.buffer & 0x00FF_0000 > 0 {
-            return Ok(writeout + 2);
+            Ok(writeout + 2)
         } else if self.buffer & 0xFF00_0000 > 0 {
-            return Ok(writeout + 1);
+            Ok(writeout + 1)
         } else {
-            return Ok(writeout);
+            Ok(writeout)
         }
     }
 
@@ -99,7 +99,7 @@ impl<W: Write> Write for Encoder<W> {
             (self.buffer & 0x0000_00FF) as u8,
         ];
         self.inner
-            .write(&writeout[..(4 - self.remaining_bits / 8) as usize])?;
+            .write_all(&writeout[..(4 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;
         Ok(())
     }

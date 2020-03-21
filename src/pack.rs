@@ -1,18 +1,18 @@
 
-struct Pack {
-    buffer : u32,
-    remainder: usize,
-    codewords: [usize;256],
-    lengths: [usize;256],
+pub struct Pack {
+    pub buffer : u32,
+    pub remainder: usize,
+    pub codewords: [usize;256],
+    pub lengths: [usize;256],
 }
 
 impl Pack {
-    fn new(codewords: [usize;256], lengths: [usize;256]) -> Self {
+    pub fn new(codewords: [usize;256], lengths: [usize;256]) -> Self {
         Pack { buffer: 0, remainder: 32 , codewords, lengths}
     }
 }
 impl Pack {
-    fn pack(&mut self, sym: u8) -> Option<Vec<u8>> {
+    pub fn pack(&mut self, sym: u8) -> Option<Vec<u8>> {
         let code = self.codewords[sym as usize];
         let len = self.lengths[sym as usize];
         if len < self.remainder {
@@ -42,7 +42,7 @@ impl Pack {
         result
     }
 
-    fn last(&mut self) -> Vec<u8> {
+    pub fn last(&mut self) -> Vec<u8> {
         let mut result = self.writeout();
         result.push(self.buffer as u8);
         result

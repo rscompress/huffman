@@ -17,5 +17,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub const BUF: usize = 4096;
 pub mod encode;
+pub mod pack;
 pub mod huffman;
 pub mod stats;

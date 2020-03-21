@@ -1,5 +1,4 @@
 
-#[derive(Debug)]
 struct Pack {
     buffer : u32,
     remainder: usize,
@@ -51,9 +50,13 @@ impl Pack {
 
 }
 
-use rscompress_huffman::encode::calculate_length;
+#[cfg(test)]
+mod tests {
+    use crate::encode::calculate_length;
+    use super::*;
 
-fn main() {
+#[test]
+fn encode_numbers_pack() {
     let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
     let mut codewords = [0usize; 256];
     let mut length = [0usize; 256];
@@ -66,7 +69,10 @@ fn main() {
     let mut result: Vec<u8> = words.iter().filter_map(|&a| p.pack(a)).flatten().collect();
     result.extend(p.last());
 
-    for k in result {
-        println!("{0} = {0:08b}", k as u8)
-    }
+    assert_eq!(
+        result,
+        &[177, 225, 82, 62, 83, 14, 151, 58, 42]
+    );
+    assert_eq!(result.len(), 9);
+}
 }

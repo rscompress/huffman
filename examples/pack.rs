@@ -3,14 +3,19 @@
 struct Pack {
     buffer : u32,
     remainder: usize,
+    codewords: [usize;256],
+    lengths: [usize;256],
 }
+
 impl Pack {
-    fn new() -> Self {
-        Pack { buffer: 0, remainder: 32 }
+    fn new(codewords: [usize;256], lengths: [usize;256]) -> Self {
+        Pack { buffer: 0, remainder: 32 , codewords, lengths}
     }
 }
 impl Pack {
-    fn pack(&mut self, code: usize, len: usize) -> Option<Vec<u8>> {
+    fn pack(&mut self, sym: u8) -> Option<Vec<u8>> {
+        let code = self.codewords[sym as usize];
+        let len = self.lengths[sym as usize];
         if len < self.remainder {
             self.save(code, len);
             return None;
@@ -38,7 +43,7 @@ impl Pack {
         result
     }
 
-    fn flush(&mut self) -> Vec<u8> {
+    fn last(&mut self) -> Vec<u8> {
         let mut result = self.writeout();
         result.push(self.buffer as u8);
         result
@@ -49,13 +54,17 @@ impl Pack {
 use rscompress_huffman::encode::calculate_length;
 
 fn main() {
+    let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
+    let mut codewords = [0usize; 256];
+    let mut length = [0usize; 256];
+    for word in words.iter() {
+        codewords[*word as usize] = *word as usize;
+        length[*word as usize] = calculate_length(*word as usize);
+    }
 
-    let words: Vec<usize> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
-    let lens: Vec<_> = words.iter().map(|&x| calculate_length(x)).collect();
-
-    let mut p = Pack::new();
-    let mut result: Vec<u8> = words.iter().zip(lens.iter()).filter_map(|(a,b)| p.pack(*a,*b)).flatten().collect();
-    result.extend(p.flush());
+    let mut p = Pack::new(codewords,length);
+    let mut result: Vec<u8> = words.iter().filter_map(|&a| p.pack(a)).flatten().collect();
+    result.extend(p.last());
 
     for k in result {
         println!("{0} = {0:08b}", k as u8)

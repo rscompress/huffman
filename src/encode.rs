@@ -25,7 +25,7 @@ pub struct Encoder<W: Write> {
     pub inner: W,
     codewords: [usize; 256],
     length: [usize; 256],
-    buffer: u32,
+    buffer: u64,
     remaining_bits: usize,
 }
 
@@ -36,31 +36,34 @@ impl<W: Write> Encoder<W> {
             inner: writer,
             length,
             codewords,
-            buffer: 0x0000_0000,
-            remaining_bits: 32,
+            buffer: 0x0000_0000_0000_0000,
+            remaining_bits: 64,
         }
     }
 }
 
 impl<W: Write> Encoder<W> {
     fn put(&mut self) -> std::io::Result<usize> {
-        let output = (self.buffer & 0xFF00_0000 >> 24) as u8;
+        let output = (self.buffer & 0xFF00_0000_0000_0000 >> 56) as u8;
         let no = self.inner.write(&[output])?;
         self.buffer <<= 8;
         self.remaining_bits += 8;
         Ok(no)
     }
-    fn double(&mut self) -> std::io::Result<usize> {
+    fn cleanup(&mut self) -> std::io::Result<usize> {
         let no = self.inner.write(&[
-            ((self.buffer & 0xFF00_0000) >> 24) as u8,
-            ((self.buffer & 0x00FF_0000) >> 16) as u8,
+            ((self.buffer & 0xFF00_0000_0000_0000) >> 56) as u8,
+            ((self.buffer & 0x00FF_0000_0000_0000) >> 48) as u8,
+            ((self.buffer & 0x0000_FF00_0000_0000) >> 40) as u8,
+            ((self.buffer & 0x0000_00FF_0000_0000) >> 32) as u8,
+            ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
         ])?;
-        self.buffer <<= 16;
-        self.remaining_bits += 16;
+        self.buffer <<= 40;
+        self.remaining_bits += 40;
         Ok(no)
     }
     fn update_buffer(&mut self, val: usize) {
-        self.buffer += (self.codewords[val] << self.remaining_bits) as u32;
+        self.buffer += (self.codewords[val] << self.remaining_bits) as u64;
     }
 }
 
@@ -69,37 +72,35 @@ impl<W: Write> Write for Encoder<W> {
         let mut writeout = 0usize;
         for val in buf.iter() {
             let codelen = self.length[*val as usize];
-            if codelen > 32 {
-                return Err(Error::new(ErrorKind::InvalidData, "Codelen > 32"));
+            if codelen > 64 {
+                return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
             }
             while codelen >= self.remaining_bits {
                 writeout += self.put()?;
             }
             self.remaining_bits -= codelen;
             self.update_buffer(*val as usize);
-            if self.buffer & 0x0000_FFFF > 0 {
-                writeout += self.double()?;
+            if self.buffer & 0x0000_0000_00FF_0000 > 0 {
+                writeout += self.cleanup()?;
             }
         }
 
-        if self.buffer & 0x00FF_0000 > 0 {
-            Ok(writeout + 2)
-        } else if self.buffer & 0xFF00_0000 > 0 {
-            Ok(writeout + 1)
-        } else {
-            Ok(writeout)
-        }
+        Ok(writeout + 8 - (self.buffer.trailing_zeros() as usize / 8))
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
         let writeout = [
-            ((self.buffer & 0xFF00_0000) >> 24) as u8,
-            ((self.buffer & 0x00FF_0000) >> 16) as u8,
-            ((self.buffer & 0x0000_FF00) >> 8) as u8,
-            (self.buffer & 0x0000_00FF) as u8,
+            ((self.buffer & 0xFF00_0000_0000_0000) >> 56) as u8,
+            ((self.buffer & 0x00FF_0000_0000_0000) >> 48) as u8,
+            ((self.buffer & 0x0000_FF00_0000_0000) >> 40) as u8,
+            ((self.buffer & 0x0000_00FF_0000_0000) >> 32) as u8,
+            ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
+            ((self.buffer & 0x0000_0000_00FF_0000) >> 16) as u8,
+            ((self.buffer & 0x0000_0000_0000_FF00) >> 8)  as u8,
+            ((self.buffer & 0x0000_0000_0000_00FF) >> 0) as u8,
         ];
         self.inner
-            .write_all(&writeout[..(4 - self.remaining_bits / 8) as usize])?;
+            .write_all(&writeout[..(8 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;
         Ok(())
     }

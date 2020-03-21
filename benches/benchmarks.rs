@@ -270,9 +270,9 @@ fn benchmark_packing_of_bits(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("pack", |b| {
         b.iter(|| {
-        let mut p = Pack::new(codewords,length);
-        let mut result: Vec<u8> = words.iter().filter_map(|&a| p.pack(a)).flatten().collect();
-        result.extend(p.last());
+        let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
+        let output_bytes = enc.write(&words).expect("");
+        enc.flush().expect("");
         })
     });
     group.finish();
@@ -324,7 +324,7 @@ criterion_group!(
 criterion_group!(
     packing,
     benchmark_packing_of_bits,
-    benchmark_packing_of_bits_encode,
+    // benchmark_packing_of_bits_encode,
 );
 criterion_group!(io, benchmark_io);
 

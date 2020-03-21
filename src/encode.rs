@@ -147,13 +147,13 @@ mod tests {
     #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
-        let length = [0usize;256];
+        let mut length = [0usize;256];
         codewords[0] = 0;
         codewords[1] = 3;
         codewords[2] = 342;
-        codewords[0] = calculate_length(0);
-        codewords[1] = calculate_length(3);
-        codewords[2] = calculate_length(342);
+        length[0] = calculate_length(0);
+        length[1] = calculate_length(3);
+        length[2] = calculate_length(342);
         let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");

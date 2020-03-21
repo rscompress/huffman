@@ -251,6 +251,60 @@ fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
     group.finish();
 }
 
+
+use rscompress_huffman::pack::Pack;
+use rscompress_huffman::encode::calculate_length;
+
+// Looking into codeword generation and it takes soo long
+fn benchmark_packing_of_bits(c: &mut Criterion) {
+    let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
+    let mut codewords = [0usize; 256];
+    let mut length = [0usize; 256];
+    for word in words.iter() {
+        codewords[*word as usize] = *word as usize;
+        length[*word as usize] = calculate_length(*word as usize);
+    }
+    let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
+
+
+    let mut group = c.benchmark_group("packing");
+    group.throughput(Throughput::Bytes(words.len() as u64));
+    group.bench_function("pack", |b| {
+        b.iter(|| {
+        let output_bytes = enc.write(&words).expect("");
+        enc.flush().expect("");
+        })
+    });
+    group.finish();
+}
+
+// Looking into codeword generation and it takes soo long
+fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
+    let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
+    let mut codewords = [0usize; 256];
+    let mut length = [0usize; 256];
+    for word in words.iter() {
+        codewords[*word as usize] = *word as usize;
+        length[*word as usize] = calculate_length(*word as usize);
+    }
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
+
+
+    let mut group = c.benchmark_group("packing");
+    group.throughput(Throughput::Bytes(words.len() as u64));
+    group.bench_function("encode", |b| {
+        b.iter(|| {
+        let output_bytes = enc.write(&words).expect("");
+        enc.flush().expect("");
+        })
+    });
+    group.finish();
+}
+
+
+
+
+
 criterion_group!(
     benches,
     benchmark_histogram_generation,
@@ -267,6 +321,11 @@ criterion_group!(
     benchmark_codeoword_generation_excl4,
     benchmark_codeoword_generation_excl5,
 );
+criterion_group!(
+    packing,
+    benchmark_packing_of_bits,
+    benchmark_packing_of_bits_encode,
+);
 criterion_group!(io, benchmark_io);
 
-criterion_main!(benches_details);
+criterion_main!(packing);

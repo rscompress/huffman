@@ -264,13 +264,13 @@ fn benchmark_packing_of_bits(c: &mut Criterion) {
         codewords[*word as usize] = *word as usize;
         length[*word as usize] = calculate_length(*word as usize);
     }
+    let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
 
 
     let mut group = c.benchmark_group("packing");
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("pack", |b| {
         b.iter(|| {
-        let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
         })
@@ -287,13 +287,13 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
         codewords[*word as usize] = *word as usize;
         length[*word as usize] = calculate_length(*word as usize);
     }
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
 
 
     let mut group = c.benchmark_group("packing");
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("encode", |b| {
         b.iter(|| {
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
         })
@@ -324,7 +324,7 @@ criterion_group!(
 criterion_group!(
     packing,
     benchmark_packing_of_bits,
-    // benchmark_packing_of_bits_encode,
+    benchmark_packing_of_bits_encode,
 );
 criterion_group!(io, benchmark_io);
 

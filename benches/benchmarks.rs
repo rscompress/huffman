@@ -1,7 +1,7 @@
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rscompress_huffman::encode::Encoder;
-use rscompress_huffman::huffman::generate_extended_codewords;
+use rscompress_huffman::huffman::{Huffman, generate_extended_codewords};
 use rscompress_huffman::stats::generate_histogram;
 use std::io::prelude::*;
 use std::io::Cursor;
@@ -18,7 +18,8 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
         b.iter(|| {
             let histogram = generate_histogram(&mut bytes.as_slice());
             let (codewords, lengths) = generate_extended_codewords(&histogram);
-            let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords, lengths);
+            let h = Huffman::new(codewords, lengths);
+            let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
             writer.write(bytes.as_slice())
         })
     });
@@ -41,7 +42,8 @@ fn benchmark_io(c: &mut Criterion) {
     let histogram = generate_histogram(&mut reader);
     let (codewords, lengths) = generate_extended_codewords(&histogram);
 
-    let mut writer = Encoder::new(dfile, codewords, lengths);
+    let h = Huffman::new(codewords, lengths);
+    let mut writer = Encoder::new(dfile, h);
     reader
         .seek(std::io::SeekFrom::Start(0))
         .expect("Can not move to start of file");
@@ -112,7 +114,8 @@ fn benchmark_encoding(c: &mut Criterion) {
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
     let (codewords, lengths) = generate_extended_codewords(&histogram);
-    let mut writer = Encoder::new(Cursor::new(Vec::new()), codewords, lengths);
+    let h = Huffman::new(codewords, lengths);
+    let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
 
     let mut group = c.benchmark_group("throughput_encoding");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
@@ -287,7 +290,8 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
         codewords[*word as usize] = *word as usize;
         length[*word as usize] = calculate_length(*word as usize);
     }
-    let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
+    let h = Huffman::new(codewords, length);
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
 
 
     let mut group = c.benchmark_group("packing");
@@ -328,4 +332,4 @@ criterion_group!(
 );
 criterion_group!(io, benchmark_io);
 
-criterion_main!(packing);
+criterion_main!(benches_details);

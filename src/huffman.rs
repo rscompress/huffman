@@ -1,6 +1,26 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
 use log::debug;
+use crate::model::Model;
+
+pub struct Huffman {
+    codewords: [usize;256],
+    length: [usize;256]
+}
+
+impl Model for Huffman {
+    fn encode(&self, sym: u8) -> (usize, usize) {
+        (self.codewords[sym as usize], self.length[sym as usize])
+    }
+}
+
+impl Huffman {
+    pub fn new(codewords: [usize; 256], length: [usize; 256]) -> Self {
+        Huffman {codewords, length}
+    }
+}
+
+
 
 /// Calculate the length of the codewords for each byte in place.
 /// This will transform the histogram into a codeword length array for each

@@ -1,7 +1,7 @@
 //! A command line tool for compressing/decompressing files directly from the
 //! command line.
 use rscompress_huffman::encode::{calculate_length, Encoder};
-use rscompress_huffman::huffman::generate_extended_codewords;
+use rscompress_huffman::huffman::{Huffman, generate_extended_codewords};
 use rscompress_huffman::stats::generate_histogram;
 use rscompress_huffman::BUF;
 use std::env;
@@ -33,7 +33,8 @@ fn main() {
     let (codewords, length) = generate_extended_codewords(&histogram);
 
     let w = BufWriter::with_capacity(BUF, dfile);
-    let mut writer = Encoder::new(w, codewords, length);
+    let h = Huffman::new(codewords, length);
+    let mut writer = Encoder::new(w, h);
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;

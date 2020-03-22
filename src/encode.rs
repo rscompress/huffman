@@ -13,6 +13,7 @@
 //! that it looses no unused bits.
 
 use std::io::{Error, ErrorKind, Write};
+use crate::model::Model;
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
 ///
@@ -21,28 +22,26 @@ use std::io::{Error, ErrorKind, Write};
 /// u8 values as input. If the codewords for any value is >255, it would through
 /// an error since the maximum value for a `u8` is `255`. The codeword is also the
 /// reason why `codewords` is an array of `usize` rather than `u8`.
-pub struct Encoder<W: Write> {
+pub struct Encoder<W: Write, M: Model> {
     pub inner: W,
-    codewords: [usize; 256],
-    length: [usize; 256],
+    model: M,
     buffer: u64,
     remaining_bits: usize,
 }
 
-impl<W: Write> Encoder<W> {
+impl<W: Write, M: Model> Encoder<W, M> {
     /// Generate a new Encoder instance
-    pub fn new(writer: W, codewords: [usize; 256], length: [usize; 256]) -> Encoder<W> {
+    pub fn new(writer: W, model: M) -> Self {
         Encoder {
             inner: writer,
-            length,
-            codewords,
+            model,
             buffer: 0x0000_0000_0000_0000,
             remaining_bits: 64,
         }
     }
 }
 
-impl<W: Write> Encoder<W> {
+impl<W: Write, M: Model> Encoder<W, M> {
     fn put(&mut self) -> std::io::Result<usize> {
         let output = (self.buffer & 0xFF00_0000_0000_0000 >> 56) as u8;
         let no = self.inner.write(&[output])?;
@@ -62,16 +61,16 @@ impl<W: Write> Encoder<W> {
         self.remaining_bits += 40;
         Ok(no)
     }
-    fn update_buffer(&mut self, val: usize) {
-        self.buffer += (self.codewords[val] << self.remaining_bits) as u64;
+    fn update_buffer(&mut self, code: usize) {
+        self.buffer += (code << self.remaining_bits) as u64;
     }
 }
 
-impl<W: Write> Write for Encoder<W> {
+impl<W: Write, M: Model> Write for Encoder<W, M> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
-        for val in buf.iter() {
-            let codelen = self.length[*val as usize];
+        for sym in buf.iter() {
+            let (code, codelen) = self.model.encode(*sym);
             if codelen > 64 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
             }
@@ -79,7 +78,7 @@ impl<W: Write> Write for Encoder<W> {
                 writeout += self.put()?;
             }
             self.remaining_bits -= codelen;
-            self.update_buffer(*val as usize);
+            self.update_buffer(code);
             if self.buffer & 0x0000_0000_00FF_0000 > 0 {
                 writeout += self.cleanup()?;
             }
@@ -123,6 +122,7 @@ mod tests {
     use crate::encode::{calculate_length, Encoder};
     use std::io::Cursor;
     use std::io::Write;
+    use crate::huffman::Huffman;
 
     #[test]
     fn encode_numbers() {
@@ -133,7 +133,8 @@ mod tests {
             codewords[*word as usize] = *word as usize;
             length[*word as usize] = calculate_length(*word as usize);
         }
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
+        let h = Huffman::new(codewords, length);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
 
@@ -154,7 +155,8 @@ mod tests {
         length[0] = calculate_length(0);
         length[1] = calculate_length(3);
         length[2] = calculate_length(342);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), codewords, length);
+        let h = Huffman::new(codewords, length);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
         let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");
 

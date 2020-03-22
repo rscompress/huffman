@@ -271,7 +271,7 @@ fn benchmark_packing_of_bits(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("pack", |b| {
         b.iter(|| {
-        let output_bytes = enc.write(&words).expect("");
+        enc.write(&words).expect("");
         enc.flush().expect("");
         })
     });
@@ -294,7 +294,7 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("encode", |b| {
         b.iter(|| {
-        let output_bytes = enc.write(&words).expect("");
+        enc.write(&words).expect("");
         enc.flush().expect("");
         })
     });

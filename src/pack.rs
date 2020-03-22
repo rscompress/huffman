@@ -78,7 +78,7 @@ fn encode_numbers_pack() {
         length[*word as usize] = calculate_length(*word as usize);
     }
     let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
-    let output_bytes = enc.write(&words).expect("");
+    enc.write(&words).expect("");
     enc.flush().expect("");
 
 

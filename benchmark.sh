@@ -3,7 +3,9 @@ cargo build --release
 
 TARGET="./target/release/rscompress-huffman"
 COMMIT="$(git rev-parse --verify HEAD)"
-OUTPUTFOLDER="benchmarks/${COMMIT::7}"
+DIRTY="$(git diff --quiet || echo '-dirty')"
+OUTPUTFOLDER="benchmarks/${COMMIT::7}${DIRTY}"
+echo $OUTPUTFOLDER
 
 if [[ ! -e $OUTPUTFOLDER ]]; then
   mkdir -p $OUTPUTFOLDER

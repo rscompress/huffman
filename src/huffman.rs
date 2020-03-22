@@ -14,13 +14,23 @@ impl Model for Huffman {
     }
 }
 
+use std::io::Read;
+use crate::stats::generate_histogram;
+
+
 impl Huffman {
     pub fn new(codewords: [usize; 256], length: [usize; 256]) -> Self {
         Huffman {codewords, length}
     }
+    pub fn from_histogram(histogram: &[usize; 256]) -> Self {
+        let (codewords, length) = generate_extended_codewords(histogram);
+        Huffman::new(codewords, length)
+    }
+    pub fn from_reader(reader: &mut impl Read) -> Self {
+        let histogram = generate_histogram(reader);
+        Huffman::from_histogram(&histogram)
+    }
 }
-
-
 
 /// Calculate the length of the codewords for each byte in place.
 /// This will transform the histogram into a codeword length array for each

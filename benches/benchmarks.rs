@@ -16,9 +16,7 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(bytes.len() as u64));
     group.bench_function("whole_chain", |b| {
         b.iter(|| {
-            let histogram = generate_histogram(&mut bytes.as_slice());
-            let (codewords, lengths) = generate_extended_codewords(&histogram);
-            let h = Huffman::new(codewords, lengths);
+            let h = Huffman::from_reader(&mut bytes.as_slice());
             let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
             writer.write(bytes.as_slice())
         })
@@ -39,10 +37,7 @@ fn benchmark_io(c: &mut Criterion) {
 
     let mut reader = BufReader::with_capacity(buf, sfile);
 
-    let histogram = generate_histogram(&mut reader);
-    let (codewords, lengths) = generate_extended_codewords(&histogram);
-
-    let h = Huffman::new(codewords, lengths);
+    let h = Huffman::from_reader(&mut reader);
     let mut writer = Encoder::new(dfile, h);
     reader
         .seek(std::io::SeekFrom::Start(0))
@@ -112,9 +107,7 @@ fn benchmark_encoding(c: &mut Criterion) {
     let bytes: Vec<u8> = vec![
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
-    let histogram = generate_histogram(&mut bytes.as_slice());
-    let (codewords, lengths) = generate_extended_codewords(&histogram);
-    let h = Huffman::new(codewords, lengths);
+    let h = Huffman::from_reader(&mut bytes.as_slice());
     let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
 
     let mut group = c.benchmark_group("throughput_encoding");
@@ -160,7 +153,6 @@ fn benchmark_codeoword_generation_excl1(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let histogram = generate_histogram(&mut bytes.as_slice());
-    // let hist = enumerate(&histogram);  // Step 1
 
     let mut group = c.benchmark_group("codeword_generation");
     group.throughput(Throughput::Bytes(bytes.len() as u64));

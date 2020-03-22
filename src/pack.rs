@@ -1,3 +1,4 @@
+#![deprecated(since = "0.0.1", note = "Please use 'encode' instead")]
 
 use std::io::{Write};
 

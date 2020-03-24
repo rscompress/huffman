@@ -12,6 +12,9 @@ impl Model for Huffman {
     fn encode(&self, sym: u8) -> (usize, usize) {
         (self.codewords[sym as usize], self.length[sym as usize])
     }
+    fn sentinel(&self) -> usize {
+        *self.length.iter().max().expect("Can not find maximum value.")
+    }
 }
 
 use std::io::Read;

@@ -151,6 +151,28 @@ mod tests {
     }
 
     #[test]
+    fn decode_numbers() {
+
+        // Generate Huffman Encoder
+        let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
+        let mut codewords = [0usize; 256];
+        let mut length = [0usize; 256];
+        for word in words.iter() {
+            codewords[*word as usize] = *word as usize;
+            length[*word as usize] = calculate_length(*word as usize);
+        }
+        let h = Huffman::new(codewords, length);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+
+        // Encode `words`
+        let output_bytes = enc.write(&words).expect("");
+        enc.flush().expect("");
+
+        let decoded_words = read(&words, &h);
+        assert_eq!(words.as_slice(), decoded_words.as_slice());
+    }
+
+    #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
         let mut length = [0usize;256];

@@ -34,7 +34,7 @@ fn main() {
 
     let w = BufWriter::with_capacity(BUF, dfile);
     let h = Huffman::new(codewords, length);
-    let mut writer = Encoder::new(w, h);
+    let mut writer = Encoder::new(w, &h);
     if log_enabled!(log::Level::Debug) || log_enabled!(log::Level::Info) {
         let mut original_file_size = 0;
         let mut huffmann_file_size = 0;

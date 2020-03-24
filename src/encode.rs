@@ -22,16 +22,16 @@ use crate::model::Model;
 /// u8 values as input. If the codewords for any value is >255, it would through
 /// an error since the maximum value for a `u8` is `255`. The codeword is also the
 /// reason why `codewords` is an array of `usize` rather than `u8`.
-pub struct Encoder<W: Write, M: Model> {
+pub struct Encoder<'a, W: Write, M: Model> {
     pub inner: W,
-    model: M,
+    model: &'a M,
     buffer: u64,
     remaining_bits: usize,
 }
 
-impl<W: Write, M: Model> Encoder<W, M> {
+impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     /// Generate a new Encoder instance
-    pub fn new(writer: W, model: M) -> Self {
+    pub fn new(writer: W, model: &'a M) -> Self {
         Encoder {
             inner: writer,
             model,
@@ -41,7 +41,7 @@ impl<W: Write, M: Model> Encoder<W, M> {
     }
 }
 
-impl<W: Write, M: Model> Encoder<W, M> {
+impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     fn put(&mut self) -> std::io::Result<usize> {
         let output = (self.buffer & 0xFF00_0000_0000_0000 >> 56) as u8;
         let no = self.inner.write(&[output])?;
@@ -66,7 +66,7 @@ impl<W: Write, M: Model> Encoder<W, M> {
     }
 }
 
-impl<W: Write, M: Model> Write for Encoder<W, M> {
+impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
         for sym in buf.iter() {
@@ -117,9 +117,14 @@ pub fn calculate_length(val: usize) -> usize {
     size
 }
 
+fn read(data: &[u8], model: &impl Model) -> Vec<u8> {
+    unimplemented!()
+}
+
+
 #[cfg(test)]
 mod tests {
-    use crate::encode::{calculate_length, Encoder};
+    use super::*;
     use std::io::Cursor;
     use std::io::Write;
     use crate::huffman::Huffman;
@@ -134,7 +139,7 @@ mod tests {
             length[*word as usize] = calculate_length(*word as usize);
         }
         let h = Huffman::new(codewords, length);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         let output_bytes = enc.write(&words).expect("");
         enc.flush().expect("");
 
@@ -156,7 +161,7 @@ mod tests {
         length[1] = calculate_length(3);
         length[2] = calculate_length(342);
         let h = Huffman::new(codewords, length);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         let output_bytes = enc.write(&[0, 1, 2]).expect("");
         enc.flush().expect("");
 

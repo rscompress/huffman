@@ -17,7 +17,7 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.bench_function("whole_chain", |b| {
         b.iter(|| {
             let h = Huffman::from_reader(&mut bytes.as_slice());
-            let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
+            let mut writer = Encoder::new(Cursor::new(Vec::new()), &h);
             writer.write(bytes.as_slice())
         })
     });
@@ -38,7 +38,7 @@ fn benchmark_io(c: &mut Criterion) {
     let mut reader = BufReader::with_capacity(buf, sfile);
 
     let h = Huffman::from_reader(&mut reader);
-    let mut writer = Encoder::new(dfile, h);
+    let mut writer = Encoder::new(dfile, &h);
     reader
         .seek(std::io::SeekFrom::Start(0))
         .expect("Can not move to start of file");
@@ -108,7 +108,7 @@ fn benchmark_encoding(c: &mut Criterion) {
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
     let h = Huffman::from_reader(&mut bytes.as_slice());
-    let mut writer = Encoder::new(Cursor::new(Vec::new()), h);
+    let mut writer = Encoder::new(Cursor::new(Vec::new()), &h);
 
     let mut group = c.benchmark_group("throughput_encoding");
     group.throughput(Throughput::Bytes(bytes.len() as u64));
@@ -283,7 +283,7 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
         length[*word as usize] = calculate_length(*word as usize);
     }
     let h = Huffman::new(codewords, length);
-    let mut enc = Encoder::new(Cursor::new(Vec::new()), h);
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
 
     let mut group = c.benchmark_group("packing");

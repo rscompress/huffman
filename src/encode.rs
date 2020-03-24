@@ -165,10 +165,10 @@ mod tests {
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
         // Encode `words`
-        let output_bytes = enc.write(&words).expect("");
+        enc.write(&words).expect("");
         enc.flush().expect("");
 
-        let decoded_words = read(&words, &h);
+        let decoded_words = read(enc.inner.get_ref(), &h);
         assert_eq!(words.as_slice(), decoded_words.as_slice());
     }
 

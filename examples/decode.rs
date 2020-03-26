@@ -1,6 +1,7 @@
 use rscompress_huffman::huffman::Huffman;
 use rscompress_huffman::encode::{read, Encoder};
 use std::io::{Write, Cursor};
+use rscompress_huffman::stats::generate_random_byte_vector;
 
 fn main() {
     // Generate Huffman Encoder
@@ -13,7 +14,8 @@ fn main() {
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
     // Encode `words`
-    let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
+    // let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
+    let origin : Vec<u8> = generate_random_byte_vector(0,9,24094440);
     enc.write(&origin).expect("");
     enc.flush().expect("");
     if let Some(fill) = enc.fillbits {

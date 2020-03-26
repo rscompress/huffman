@@ -142,11 +142,9 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
     let mut first = true;
     for val in data.iter() {
         if bits_left_in_buffer >= 8 {
-            buffer += (*val as u64) << bits_left_in_buffer - 8;
             // fill buffer
-            // dbg!(buffer >> bits_left_in_buffer - 8 );
+            buffer += (*val as u64) << bits_left_in_buffer - 8;
             bits_left_in_buffer -= 8;
-            // dbg!(buffer, bits_left_in_buffer, val);
             continue
         }
         // buffer filled
@@ -160,39 +158,21 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
             let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
             result.push(sym);
             buffer <<= length;
-            // dbg!(sym);
             bits_left_in_buffer += length;
         }
-        // dbg!(buffer, bits_left_in_buffer);
+        assert!(bits_left_in_buffer >= 8, "Not enough bits left in buffer for val");
         buffer += (*val as u64) << bits_left_in_buffer - 8;
-        // fill buffer
-        // dbg!(buffer >> bits_left_in_buffer - 8 );
         bits_left_in_buffer -= 8;
     }
-    // dbg!("No Values anymore", buffer);
-    // if first {
-    //     buffer <<= 1;
-        // let mut zeros = buffer.leading_zeros();
-        // dbg!(zeros);
-        // while zeros - 1 > 0 {
-        //     let (sym,_) = search_key_or_next_small_key(&bt, 0);
-        //     result.push(sym);
-        //     remaining += 1;
-        //     zeros -= 1;
-        // };
-    // }
-    // remainder of buffer needs to be decoded
-    // buffer filled
+    // consume bits in buffer
     while buffer != 0 {
-        // dbg!(buffer);
         let searchvalue = buffer >> shift;
         let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
         result.push(sym);
         buffer <<= length;
         bits_left_in_buffer += length;
-        // dbg!(searchvalue, sym, length, bits_left_in_buffer);
     }
-    // dbg!(bits_left_in_buffer, fillbits);
+    // handle fillbits from encoder
     for _ in 0..(64 - bits_left_in_buffer - fillbits as usize) {
         let searchvalue = buffer >> shift;
         let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);

@@ -35,7 +35,7 @@ use rand::Rng;
 /// Shameless copy & paste from [reddit](https://www.reddit.com/r/rust/comments/7ptbei/rust_vector_of_random_numbers_in_range/)
 pub fn generate_random_byte_vector(min: u8, max: u8, count: usize) -> Vec<u8> {
     let mut rng = rand::thread_rng();
-    (0..count).map(|_| { rng.gen_range(min, max) }).collect::<Vec<u8>>()
+    (0..count).map(|_| { rng.gen_range(min, max) }).collect()
 }
 
 

@@ -27,6 +27,7 @@ pub struct Encoder<'a, W: Write, M: Model> {
     model: &'a M,
     buffer: u64,
     remaining_bits: usize,
+    pub fillbits: Option<u8>,
 }
 
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
@@ -37,6 +38,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             model,
             buffer: 0x0000_0000_0000_0000,
             remaining_bits: 64,
+            fillbits: None,
         }
     }
 }
@@ -98,6 +100,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             ((self.buffer & 0x0000_0000_0000_FF00) >> 8)  as u8,
             ((self.buffer & 0x0000_0000_0000_00FF) >> 0) as u8,
         ];
+        self.fillbits = Some((self.remaining_bits % 8) as u8);
         self.inner
             .write_all(&writeout[..(8 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;

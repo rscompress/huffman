@@ -5,21 +5,29 @@ use crate::model::Model;
 
 pub struct Huffman {
     codewords: [usize;256],
-    length: [usize;256]
+    length: [usize;256],
 }
 
 impl Model for Huffman {
     fn encode(&self, sym: u8) -> (usize, usize) {
         (self.codewords[sym as usize], self.length[sym as usize])
     }
+    // The sentinel bits are set for `(1 << self.sentinel()) - 1`
     fn sentinel(&self) -> usize {
         *self.length.iter().max().expect("Can not find maximum value.")
+    }
+    fn to_btreemap(&self) -> BTreeMap<usize, (usize, usize)> {
+        let mut result: BTreeMap<usize,(usize,usize)> = BTreeMap::new();
+        for (sym,&code) in self.codewords.iter().enumerate().filter(|(ix,_)| self.length[*ix as usize] != 0) {
+            result.insert(code << (self.sentinel() - self.length[sym]), (sym, self.length[sym]));
+        }
+        result
     }
 }
 
 use std::io::Read;
 use crate::stats::generate_histogram;
-
+use std::collections::BTreeMap;
 
 impl Huffman {
     pub fn new(codewords: [usize; 256], length: [usize; 256]) -> Self {

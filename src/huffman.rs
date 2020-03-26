@@ -163,7 +163,7 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], [usize
     let (codes, _) = calculate_codewords_based_on_length(&weights);
 
     let mut extended_codes = [0usize; 256];
-    let mut length = [1usize; 256];
+    let mut length = [0usize; 256];
     for (code, (key, _)) in codes.into_iter().zip(sorted_tuple.into_iter()) {
         debug!(
             "Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]",

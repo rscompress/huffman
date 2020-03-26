@@ -107,7 +107,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
 
 /// Calculate bit length of `val`
 pub fn calculate_length(val: usize) -> usize {
-    if val == 0 {
+    if val <= 1 {
         return 1usize;
     }
     let mut size = 0usize;

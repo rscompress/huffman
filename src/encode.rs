@@ -132,6 +132,13 @@ fn search_key_or_next_small_key(tree: &BTreeMap<usize, (usize, usize)>, key: usi
     }
 }
 
+fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (usize, usize)>, result: &mut Vec<u8>) -> usize {
+    let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+    result.push(sym);
+    length
+}
+
+
 pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
     let mut buffer: u64 = 1 << 63;
     let mut bits_left_in_buffer = 63usize;
@@ -155,8 +162,9 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
         }
         while 64 - bits_left_in_buffer >= s {
             let searchvalue = buffer >> shift;
-            let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-            result.push(sym);
+            let length = decode_next(searchvalue, &bt, &mut result);
+            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+            // result.push(sym);
             buffer <<= length;
             bits_left_in_buffer += length;
         }
@@ -166,19 +174,21 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
     }
     // consume bits in buffer
     while buffer != 0 {
-        let searchvalue = buffer >> shift;
-        let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-        result.push(sym);
-        buffer <<= length;
-        bits_left_in_buffer += length;
+            let searchvalue = buffer >> shift;
+            let length = decode_next(searchvalue, &bt, &mut result);
+            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+            // result.push(sym);
+            buffer <<= length;
+            bits_left_in_buffer += length;
     }
     // handle fillbits from encoder
     for _ in 0..(64 - bits_left_in_buffer - fillbits as usize) {
-        let searchvalue = buffer >> shift;
-        let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-        result.push(sym);
-        buffer <<= length;
-        bits_left_in_buffer += length;
+            let searchvalue = buffer >> shift;
+            let length = decode_next(searchvalue, &bt, &mut result);
+            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+            // result.push(sym);
+            buffer <<= length;
+            bits_left_in_buffer += length;
     }
     result
 }

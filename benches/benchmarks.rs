@@ -297,6 +297,41 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.finish();
 }
 
+use rscompress_huffman::encode::{read};
+use std::io::{Write};
+
+
+fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
+    // Generate Huffman Encoder
+    let words: Vec<u8> =  vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+    let mut histogram = [0usize; 256];
+    for i in 0..words.len() {
+        histogram[i] = words[i] as usize;
+    }
+    let h = Huffman::from_histogram(&histogram);
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+
+    // Encode `words`
+    let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
+    enc.write(&origin).expect("");
+    enc.flush().expect("");
+    if let Some(fill) = enc.fillbits {
+        let mut group = c.benchmark_group("packing");
+        group.throughput(Throughput::Bytes(origin.len() as u64));
+        group.bench_function("decode", |b| {
+            b.iter(|| {
+                read(enc.inner.get_ref(), &h, fill);
+            })
+        });
+        group.finish();
+    }
+}
+
+
+
+
+
+
 
 
 
@@ -319,9 +354,10 @@ criterion_group!(
 );
 criterion_group!(
     packing,
-    benchmark_packing_of_bits,
-    benchmark_packing_of_bits_encode,
+    // benchmark_packing_of_bits,
+    // benchmark_packing_of_bits_encode,
+    benchmark_packing_of_bits_decode,
 );
 criterion_group!(io, benchmark_io);
 
-criterion_main!(benches_details);
+criterion_main!(packing);

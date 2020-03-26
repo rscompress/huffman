@@ -170,9 +170,34 @@ mod tests {
         // Encode `words`
         enc.write(&words).expect("");
         enc.flush().expect("");
+        if let Some(fill) = enc.fillbits {
+            let decoded_words = read(enc.inner.get_ref(), &h, fill);
+            assert_eq!(words.as_slice(), decoded_words.as_slice());
+        } else {
+            panic!("Fill bits not set")
+        }
+    }
 
-        let decoded_words = read(enc.inner.get_ref(), &h);
-        assert_eq!(words.as_slice(), decoded_words.as_slice());
+    #[test]
+    fn decode_numbers_histogram_encoded() {
+        let words: Vec<u8> =  vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+        let mut histogram = [0usize; 256];
+        for i in 0..words.len() {
+            histogram[i] = words[i] as usize;
+        }
+        let h = Huffman::from_histogram(&histogram);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+
+        // Encode `words`
+        let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
+        enc.write(&origin).expect("");
+        enc.flush().expect("");
+        if let Some(fill) = enc.fillbits {
+            let decoded_words = read(enc.inner.get_ref(), &h, fill);
+            assert_eq!(origin.as_slice(), decoded_words.as_slice());
+        } else {
+            panic!("Fill bits not set")
+        }
     }
 
     #[test]

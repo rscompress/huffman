@@ -120,8 +120,87 @@ pub fn calculate_length(val: usize) -> usize {
     size
 }
 
-fn read(data: &[u8], model: &impl Model) -> Vec<u8> {
-    unimplemented!()
+use std::collections::BTreeMap;
+
+fn search_key_or_next_small_key(tree: &BTreeMap<usize, (usize, usize)>, key: usize) -> (u8, usize) {
+    if let Some(v) = tree.get(&key) {
+        return (v.0 as u8, v.1)
+    } else if let Some((_, v)) = tree.range(..key).next_back() {
+        return (v.0 as u8, v.1)
+    } else {
+        panic!("Whaaaat")
+    }
+}
+
+pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
+    let mut buffer: u64 = 1 << 63;
+    let mut bits_left_in_buffer = 63usize;
+    let bt = model.to_btreemap();
+    let s = model.sentinel();
+    let shift = 64 - s;
+    let mut result: Vec<u8> = Vec::with_capacity(data.len());
+    let mut first = true;
+    for val in data.iter() {
+        if bits_left_in_buffer >= 8 {
+            buffer += (*val as u64) << bits_left_in_buffer - 8;
+            // fill buffer
+            // dbg!(buffer >> bits_left_in_buffer - 8 );
+            bits_left_in_buffer -= 8;
+            // dbg!(buffer, bits_left_in_buffer, val);
+            continue
+        }
+        // buffer filled
+        if first {
+            buffer <<= 1;
+            first = false;
+            bits_left_in_buffer += 1;
+        }
+        while 64 - bits_left_in_buffer >= s {
+            let searchvalue = buffer >> shift;
+            let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+            result.push(sym);
+            buffer <<= length;
+            // dbg!(sym);
+            bits_left_in_buffer += length;
+        }
+        // dbg!(buffer, bits_left_in_buffer);
+        buffer += (*val as u64) << bits_left_in_buffer - 8;
+        // fill buffer
+        // dbg!(buffer >> bits_left_in_buffer - 8 );
+        bits_left_in_buffer -= 8;
+    }
+    // dbg!("No Values anymore", buffer);
+    // if first {
+    //     buffer <<= 1;
+        // let mut zeros = buffer.leading_zeros();
+        // dbg!(zeros);
+        // while zeros - 1 > 0 {
+        //     let (sym,_) = search_key_or_next_small_key(&bt, 0);
+        //     result.push(sym);
+        //     remaining += 1;
+        //     zeros -= 1;
+        // };
+    // }
+    // remainder of buffer needs to be decoded
+    // buffer filled
+    while buffer != 0 {
+        // dbg!(buffer);
+        let searchvalue = buffer >> shift;
+        let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+        result.push(sym);
+        buffer <<= length;
+        bits_left_in_buffer += length;
+        // dbg!(searchvalue, sym, length, bits_left_in_buffer);
+    }
+    // dbg!(bits_left_in_buffer, fillbits);
+    for _ in 0..(64 - bits_left_in_buffer - fillbits as usize) {
+        let searchvalue = buffer >> shift;
+        let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+        result.push(sym);
+        buffer <<= length;
+        bits_left_in_buffer += length;
+    }
+    result
 }
 
 

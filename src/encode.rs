@@ -28,6 +28,7 @@ pub struct Encoder<'a, W: Write, M: Model> {
     buffer: u64,
     remaining_bits: usize,
     pub fillbits: Option<u8>,
+    pub readbytes: usize,
 }
 
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
@@ -39,6 +40,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             buffer: 0x0000_0000_0000_0000,
             remaining_bits: 64,
             fillbits: None,
+            readbytes: 0,
         }
     }
 }
@@ -72,6 +74,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut writeout = 0usize;
         for sym in buf.iter() {
+            self.readbytes += 1;
             let (code, codelen) = self.model.encode(*sym);
             if codelen > 64 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
@@ -104,6 +107,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
         self.inner
             .write_all(&writeout[..(8 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;
+        println!("RB {}", self.readbytes);
         Ok(())
     }
 }

@@ -6,6 +6,7 @@ use rscompress_huffman::stats::generate_random_byte_vector;
 // use std::io::{BufRead, BufReader, BufWriter};
 use std::io::{Cursor, Write};
 use log::debug;
+use std::time::Instant;
 
 #[allow(unreachable_code)]
 fn main() {
@@ -29,7 +30,9 @@ fn main() {
         enc.write(&origin).expect("");
         enc.flush().expect("");
         let fill = enc.fillbits.unwrap();
+        let now = Instant::now();
         let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
+        println!("Time: {}", now.elapsed().as_secs_f32());
         assert_eq!(decoded_words, origin);
         println!("{} successful", i)
     }
@@ -37,18 +40,18 @@ fn main() {
 
 use std::collections::BTreeMap;
 
-fn search_key_or_next_small_key(tree: &BTreeMap<usize, (usize, usize)>, key: usize) -> (u8, usize) {
+fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
     if let Some(v) = tree.get(&key) {
-        return (v.0 as u8, v.1)
+        return *v
     } else if let Some((_, v)) = tree.range(..key).next_back() {
-        return (v.0 as u8, v.1)
+        return *v
     } else {
         panic!("Whaaaat")
     }
 }
 
 
-fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (usize, usize)>, result: &mut Vec<u8>) -> usize {
+fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Vec<u8>) -> u8 {
     let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
     result.push(sym);
     length
@@ -59,7 +62,7 @@ use rscompress_huffman::model::Model;
 
 pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, origin: &[u8]) -> Vec<u8> {
     let mut buffer: u64 = 1 << 63;
-    let mut bits_left_in_buffer = 63usize;
+    let mut bits_left_in_buffer = 63u8;
     let bt = model.to_btreemap();
     debug!("{:?}", &bt);
     let s = model.sentinel();
@@ -82,7 +85,7 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, ori
             first = false;
             bits_left_in_buffer += 1;
         }
-        while 64 - bits_left_in_buffer >= s {
+        while (64 - bits_left_in_buffer) as usize >= s {
             let searchvalue = buffer >> shift;
             let length = decode_next(searchvalue, &bt, &mut result);
             // let s = result[writeout];

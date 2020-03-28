@@ -20,22 +20,23 @@ fn main() {
 
     // Encode `words`
     // let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
-    // for i in 0..100 {
-    let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 703094440, &words);
-    // let mut origin: Vec<u8> = Vec::new();
-    // let mut r = BufReader::with_capacity(4096, File::open("erorrs.raw").unwrap());
-    // r.read_to_end(&mut origin).unwrap();
-    let h = Huffman::from_histogram(&histogram);
-    let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
-    enc.write(&origin).expect("");
-    enc.flush().expect("");
-    let fill = enc.fillbits.unwrap();
-    let now = Instant::now();
-    let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
-    println!("Time: {}", now.elapsed().as_secs_f32());
-    assert_eq!(decoded_words, origin);
-    // println!("{} successful", i)
-    // }
+    for i in 0..100 {
+        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 703094440, &words);
+        // let mut origin: Vec<u8> = Vec::new();
+        // let mut r = BufReader::with_capacity(4096, File::open("erorrs.raw").unwrap());
+        // r.read_to_end(&mut origin).unwrap();
+        let h = Huffman::from_histogram(&histogram);
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+        enc.write(&origin).expect("");
+        enc.flush().expect("");
+        println!("Encoded length: {}", enc.writeout);
+        let fill = enc.fillbits.unwrap();
+        let now = Instant::now();
+        let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
+        println!("Time: {}", now.elapsed().as_secs_f32());
+        assert_eq!(decoded_words, origin);
+        println!("{} successful", i)
+    }
 }
 
 use std::collections::BTreeMap;

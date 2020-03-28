@@ -41,12 +41,15 @@ fn main() {
 use std::collections::BTreeMap;
 
 fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
-    if let Some(v) = tree.get(&key) {
-        return *v
-    } else if let Some((_, v)) = tree.range(..key).next_back() {
+    let mut iter = tree.range(..key+1);
+    let prev = iter.next_back();
+    let prev_prev = iter.next_back();
+
+    if let Some((_, v)) = prev {
         return *v
     } else {
-        panic!("Whaaaat")
+        let r = prev_prev.unwrap();
+        return *r.1
     }
 }
 

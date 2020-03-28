@@ -14,6 +14,7 @@
 
 use std::io::{Error, ErrorKind, Write};
 use crate::model::Model;
+use log::debug;
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
 ///
@@ -29,6 +30,7 @@ pub struct Encoder<'a, W: Write, M: Model> {
     remaining_bits: usize,
     pub fillbits: Option<u8>,
     pub readbytes: usize,
+    pub writeout: usize,
 }
 
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
@@ -41,32 +43,42 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             remaining_bits: 64,
             fillbits: None,
             readbytes: 0,
+            writeout: 0,
         }
     }
 }
 
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     fn put(&mut self) -> std::io::Result<usize> {
-        let output = (self.buffer & 0xFF00_0000_0000_0000 >> 56) as u8;
+        let output = (self.buffer >> 56) as u8;
         let no = self.inner.write(&[output])?;
+        debug!{"Output (norml): {:8b}", output};
+        self.writeout += 1;
         self.buffer <<= 8;
+
         self.remaining_bits += 8;
         Ok(no)
     }
     fn cleanup(&mut self) -> std::io::Result<usize> {
-        let no = self.inner.write(&[
-            ((self.buffer & 0xFF00_0000_0000_0000) >> 56) as u8,
+        let output = [
+            (self.buffer >> 56) as u8,
             ((self.buffer & 0x00FF_0000_0000_0000) >> 48) as u8,
             ((self.buffer & 0x0000_FF00_0000_0000) >> 40) as u8,
             ((self.buffer & 0x0000_00FF_0000_0000) >> 32) as u8,
             ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
-        ])?;
+        ];
+        let no = self.inner.write(&output)?;
+        for n in output.iter() {
+            debug!("Output (batch): {:8b}", n);
+        }
+        self.writeout += 5;
         self.buffer <<= 40;
         self.remaining_bits += 40;
         Ok(no)
     }
     fn update_buffer(&mut self, code: usize) {
         self.buffer += (code << self.remaining_bits) as u64;
+        debug!("New Buffer: {:b}", self.buffer);
     }
 }
 
@@ -76,10 +88,11 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
         for sym in buf.iter() {
             self.readbytes += 1;
             let (code, codelen) = self.model.encode(*sym);
+            debug!("Encode: Byte {}({0:b}) @ {1} -> {2} ({2:b})", sym, self.readbytes - 1, code);
             if codelen > 64 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
             }
-            while codelen >= self.remaining_bits {
+            while codelen > self.remaining_bits {
                 writeout += self.put()?;
             }
             self.remaining_bits -= codelen;
@@ -107,7 +120,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
         self.inner
             .write_all(&writeout[..(8 - self.remaining_bits / 8) as usize])?;
         self.inner.flush()?;
-        println!("RB {}", self.readbytes);
+        debug!("RB {}", self.readbytes);
         Ok(())
     }
 }
@@ -122,79 +135,6 @@ pub fn calculate_length(val: usize) -> usize {
         size += 1;
     }
     size
-}
-
-use std::collections::BTreeMap;
-
-fn search_key_or_next_small_key(tree: &BTreeMap<usize, (usize, usize)>, key: usize) -> (u8, usize) {
-    if let Some(v) = tree.get(&key) {
-        return (v.0 as u8, v.1)
-    } else if let Some((_, v)) = tree.range(..key).next_back() {
-        return (v.0 as u8, v.1)
-    } else {
-        panic!("Whaaaat")
-    }
-}
-
-fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (usize, usize)>, result: &mut Vec<u8>) -> usize {
-    let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-    result.push(sym);
-    length
-}
-
-
-pub fn read(data: &[u8], model: &impl Model, fillbits: u8) -> Vec<u8> {
-    let mut buffer: u64 = 1 << 63;
-    let mut bits_left_in_buffer = 63usize;
-    let bt = model.to_btreemap();
-    let s = model.sentinel();
-    let shift = 64 - s;
-    let mut result: Vec<u8> = Vec::with_capacity(data.len());
-    let mut first = true;
-    for val in data.iter() {
-        if bits_left_in_buffer >= 8 {
-            // fill buffer
-            buffer += (*val as u64) << bits_left_in_buffer - 8;
-            bits_left_in_buffer -= 8;
-            continue
-        }
-        // buffer filled
-        if first {
-            buffer <<= 1;
-            first = false;
-            bits_left_in_buffer += 1;
-        }
-        while 64 - bits_left_in_buffer >= s {
-            let searchvalue = buffer >> shift;
-            let length = decode_next(searchvalue, &bt, &mut result);
-            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-            // result.push(sym);
-            buffer <<= length;
-            bits_left_in_buffer += length;
-        }
-        assert!(bits_left_in_buffer >= 8, "Not enough bits left in buffer for val");
-        buffer += (*val as u64) << bits_left_in_buffer - 8;
-        bits_left_in_buffer -= 8;
-    }
-    // consume bits in buffer
-    while buffer != 0 {
-            let searchvalue = buffer >> shift;
-            let length = decode_next(searchvalue, &bt, &mut result);
-            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-            // result.push(sym);
-            buffer <<= length;
-            bits_left_in_buffer += length;
-    }
-    // handle fillbits from encoder
-    for _ in 0..(64 - bits_left_in_buffer - fillbits as usize) {
-            let searchvalue = buffer >> shift;
-            let length = decode_next(searchvalue, &bt, &mut result);
-            // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-            // result.push(sym);
-            buffer <<= length;
-            bits_left_in_buffer += length;
-    }
-    result
 }
 
 

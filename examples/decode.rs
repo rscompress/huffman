@@ -20,7 +20,7 @@ fn main() {
 
     // Encode `words`
     // let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
-    for i in 0..100 {
+    for i in 0..50 {
         let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 703094440, &words);
         // let mut origin: Vec<u8> = Vec::new();
         // let mut r = BufReader::with_capacity(4096, File::open("erorrs.raw").unwrap());
@@ -47,8 +47,7 @@ fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) ->
     if let Some((_, v)) = iter.next_back() {
         return *v
     } else {
-        let r = iter.next_back().unwrap();
-        return *r.1
+        panic!("Panic!!!!")
     }
 }
 

@@ -329,6 +329,7 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
 }
 
 use std::collections::BTreeMap;
+use std::io::{BufRead};
 
 fn iter_search_key_or_next_small_key(bt: &BTreeMap<usize, (u8,u8)>, data: &[u8]) {
     for key in data {
@@ -344,14 +345,17 @@ fn benchmark_searching_for_key_value(c: &mut Criterion) {
     }
     let h = Huffman::from_histogram(&histogram);
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
-    let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 10_044, &words);
+    let sfile = File::open("test.raw").expect("Failed to open source file");
+    let mut b = BufReader::new(sfile);
+    let mut origin = Vec::new();
+    b.read_to_end(&mut origin).expect("");
     enc.write(&origin).expect("");
     enc.flush().expect("");
     let bt = h.to_btreemap();
 
-    let mut group = c.benchmark_group("packing");
+    let mut group = c.benchmark_group("decode");
     group.throughput(Throughput::Bytes(origin.len() as u64));
-    group.bench_function("pack", |b| {
+    group.bench_function("search for key", |b| {
         b.iter(|| {
             iter_search_key_or_next_small_key(&bt, &origin)
         })

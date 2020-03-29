@@ -1,4 +1,4 @@
-use criterion::Throughput;
+use criterion::{Throughput, BenchmarkId};
 use criterion::{criterion_group, criterion_main, Criterion};
 use rscompress_huffman::encode::Encoder;
 use rscompress_huffman::huffman::{generate_extended_codewords, Huffman};
@@ -294,7 +294,9 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.finish();
 }
 
-use rscompress_huffman::decode::read;
+use rscompress_huffman::decode::{read, search_key_or_next_small_key};
+use rscompress_huffman::stats::generate_random_byte_vector;
+use rscompress_huffman::model::Model;
 use std::io::Write;
 
 fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
@@ -311,16 +313,50 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
     let origin: Vec<u8> = vec![0, 9, 9, 9, 9, 9, 7, 0, 7, 4, 9, 9, 0, 0, 0, 4, 0];
     enc.write(&origin).expect("");
     enc.flush().expect("");
+
+    let inputs = (enc.inner.get_ref(), &h, enc.fillbits.unwrap(), enc.readbytes, &origin);
+
     if let Some(fill) = enc.fillbits {
         let mut group = c.benchmark_group("packing");
         group.throughput(Throughput::Bytes(origin.len() as u64));
-        group.bench_function("decode", |b| {
+        group.bench_with_input(BenchmarkId::new("decoding", enc.readbytes), &inputs, |b, &inputs| {
             b.iter(|| {
-                read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
+                read(inputs.0, inputs.1, inputs.2, inputs.3, inputs.4);
             })
         });
         group.finish();
     }
+}
+
+use std::collections::BTreeMap;
+
+fn iter_search_key_or_next_small_key(bt: &BTreeMap<usize, (u8,u8)>, data: &[u8]) {
+    for key in data {
+        search_key_or_next_small_key(bt, *key as usize);
+    }
+}
+
+fn benchmark_searching_for_key_value(c: &mut Criterion) {
+    let words: Vec<u8> = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+    let mut histogram = [0usize; 256];
+    for i in 0..words.len() {
+        histogram[i] = words[i] as usize;
+    }
+    let h = Huffman::from_histogram(&histogram);
+    let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+    let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 10_044, &words);
+    enc.write(&origin).expect("");
+    enc.flush().expect("");
+    let bt = h.to_btreemap();
+
+    let mut group = c.benchmark_group("packing");
+    group.throughput(Throughput::Bytes(origin.len() as u64));
+    group.bench_function("pack", |b| {
+        b.iter(|| {
+            iter_search_key_or_next_small_key(&bt, &origin)
+        })
+    });
+    group.finish();
 }
 
 criterion_group!(
@@ -343,7 +379,7 @@ criterion_group!(
     packing,
     // benchmark_packing_of_bits,
     // benchmark_packing_of_bits_encode,
-    benchmark_packing_of_bits_decode,
+    benchmark_searching_for_key_value,
 );
 criterion_group!(io, benchmark_io);
 

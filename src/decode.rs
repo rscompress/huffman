@@ -2,7 +2,7 @@ use crate::model::Model;
 use log::debug;
 use std::collections::BTreeMap;
 
-fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
+pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
     let mut iter = tree.range(..key + 1);
 
     if let Some((_, v)) = iter.next_back() {

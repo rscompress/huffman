@@ -71,7 +71,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
         for n in output.iter() {
             debug!("Output (batch): {:8b}", n);
         }
-        self.writeout += 5;
+        self.writeout += no;
         self.buffer <<= 40;
         self.remaining_bits += 40;
         Ok(no)
@@ -116,11 +116,13 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             ((self.buffer & 0x0000_0000_0000_FF00) >> 8)  as u8,
             ((self.buffer & 0x0000_0000_0000_00FF) >> 0) as u8,
         ];
+        let length = 8 - self.remaining_bits / 8;
         self.fillbits = Some((self.remaining_bits % 8) as u8);
         self.inner
-            .write_all(&writeout[..(8 - self.remaining_bits / 8) as usize])?;
+            .write_all(&writeout[..length as usize])?;
         self.inner.flush()?;
-        debug!("RB {}", self.readbytes);
+        self.writeout += length;
+        println!("RB {} FSH {} WO {}", self.readbytes, length, self.writeout);
         Ok(())
     }
 }
@@ -167,51 +169,15 @@ mod tests {
     }
 
     #[test]
-    fn decode_numbers() {
-
-        // Generate Huffman Encoder
-        let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
-        let mut codewords = [0usize; 256];
-        let mut length = [0usize; 256];
-        for word in words.iter() {
-            codewords[*word as usize] = *word as usize;
-            length[*word as usize] = calculate_length(*word as usize);
-        }
-        let h = Huffman::new(codewords, length);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
-
-        // Encode `words`
-        enc.write(&words).expect("");
-        enc.flush().expect("");
-        if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill);
-            assert_eq!(words.as_slice(), decoded_words.as_slice());
-        } else {
-            panic!("Fill bits not set")
-        }
+    fn binary_length() {
+        assert_eq!(calculate_length(4), 3);
+        assert_eq!(calculate_length(16), 5);
+        assert_eq!(calculate_length(2), 2);
+        assert_eq!(calculate_length(0), 1);
+        assert_eq!(calculate_length(1), 1);
     }
 
-    #[test]
-    fn decode_numbers_histogram_encoded() {
-        let words: Vec<u8> =  vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
-        let mut histogram = [0usize; 256];
-        for i in 0..words.len() {
-            histogram[i] = words[i] as usize;
-        }
-        let h = Huffman::from_histogram(&histogram);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
-        // Encode `words`
-        let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
-        enc.write(&origin).expect("");
-        enc.flush().expect("");
-        if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill);
-            assert_eq!(origin.as_slice(), decoded_words.as_slice());
-        } else {
-            panic!("Fill bits not set")
-        }
-    }
 
     #[test]
     fn encode_stream() {
@@ -230,14 +196,5 @@ mod tests {
 
         assert_eq!(enc.inner.get_ref(), &[117, 96]);
         assert_eq!(output_bytes, 2);
-    }
-
-    #[test]
-    fn binary_length() {
-        assert_eq!(calculate_length(4), 3);
-        assert_eq!(calculate_length(16), 5);
-        assert_eq!(calculate_length(2), 2);
-        assert_eq!(calculate_length(0), 1);
-        assert_eq!(calculate_length(1), 1);
     }
 }

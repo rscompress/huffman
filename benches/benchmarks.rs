@@ -297,7 +297,7 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.finish();
 }
 
-use rscompress_huffman::encode::{read};
+use rscompress_huffman::decode::{read};
 use std::io::{Write};
 
 
@@ -320,7 +320,7 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(origin.len() as u64));
         group.bench_function("decode", |b| {
             b.iter(|| {
-                read(enc.inner.get_ref(), &h, fill);
+                read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
             })
         });
         group.finish();

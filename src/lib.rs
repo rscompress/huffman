@@ -17,6 +17,7 @@
 
 pub const BUF: usize = 4096;
 pub mod encode;
+pub mod decode;
 pub mod pack;
 pub mod huffman;
 pub mod stats;

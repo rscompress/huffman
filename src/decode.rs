@@ -108,12 +108,8 @@ mod tests {
         // Encode `words`
         enc.write(&words).expect("");
         enc.flush().expect("");
-        if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
-            assert_eq!(words.as_slice(), decoded_words.as_slice());
-        } else {
-            panic!("Fill bits not set")
-        }
+        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
+        assert_eq!(words.as_slice(), decoded_words.as_slice());
     }
 
     #[test]
@@ -132,11 +128,7 @@ mod tests {
         ];
         enc.write(&origin).expect("");
         enc.flush().expect("");
-        if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
-            assert_eq!(origin.as_slice(), decoded_words.as_slice());
-        } else {
-            panic!("Fill bits not set")
-        }
+        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
+        assert_eq!(origin.as_slice(), decoded_words.as_slice());
     }
 }

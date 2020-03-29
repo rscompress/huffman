@@ -1,5 +1,5 @@
-use criterion::{Throughput, BenchmarkId};
 use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{BenchmarkId, Throughput};
 use rscompress_huffman::encode::Encoder;
 use rscompress_huffman::huffman::{generate_extended_codewords, Huffman};
 use rscompress_huffman::stats::generate_histogram;
@@ -317,18 +317,22 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("packing");
     group.throughput(Throughput::Bytes(origin.len() as u64));
-    group.bench_with_input(BenchmarkId::new("decoding", enc.readbytes), &inputs, |b, &inputs| {
-        b.iter(|| {
-            read(inputs.0, inputs.1, inputs.2);
-        })
-    });
+    group.bench_with_input(
+        BenchmarkId::new("decoding", enc.readbytes),
+        &inputs,
+        |b, &inputs| {
+            b.iter(|| {
+                read(inputs.0, inputs.1, inputs.2);
+            })
+        },
+    );
     group.finish();
 }
 
 use std::collections::BTreeMap;
-use std::io::{BufRead};
+use std::io::BufRead;
 
-fn iter_search_key_or_next_small_key(bt: &BTreeMap<usize, (u8,u8)>, data: &[u8]) {
+fn iter_search_key_or_next_small_key(bt: &BTreeMap<usize, (u8, u8)>, data: &[u8]) {
     for key in data {
         search_key_or_next_small_key(bt, *key as usize);
     }
@@ -353,9 +357,7 @@ fn benchmark_searching_for_key_value(c: &mut Criterion) {
     let mut group = c.benchmark_group("decode");
     group.throughput(Throughput::Bytes(origin.len() as u64));
     group.bench_function("search for key", |b| {
-        b.iter(|| {
-            iter_search_key_or_next_small_key(&bt, &origin)
-        })
+        b.iter(|| iter_search_key_or_next_small_key(&bt, &origin))
     });
     group.finish();
 }

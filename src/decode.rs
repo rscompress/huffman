@@ -18,11 +18,7 @@ fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Ve
     length
 }
 
-pub fn read(
-    data: &[u8],
-    model: &impl Model,
-    goalsbyte: usize,
-) -> Vec<u8> {
+pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
     let mut buffer: u64 = 1 << 63;
     let mut bits_left_in_buffer = 63u8;
     let bt = model.to_btreemap();

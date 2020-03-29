@@ -1,4 +1,3 @@
-
 use rscompress_huffman::stats::generate_random_byte_vector;
 use std::fs::File;
 use std::io::{BufWriter, Write};

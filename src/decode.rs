@@ -1,30 +1,30 @@
-
-
-
 use crate::model::Model;
 use log::debug;
 use std::collections::BTreeMap;
 
 fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
-    let mut iter = tree.range(..key+1);
+    let mut iter = tree.range(..key + 1);
 
     if let Some((_, v)) = iter.next_back() {
-        return *v
+        return *v;
     } else {
         panic!("Panic!!!!")
     }
 }
 
-
 fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Vec<u8>) -> u8 {
-    let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
+    let (sym, length) = search_key_or_next_small_key(&bt, searchvalue as usize);
     result.push(sym);
     length
 }
 
-
-
-pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, origin: &[u8]) -> Vec<u8> {
+pub fn read(
+    data: &[u8],
+    model: &impl Model,
+    fillbits: u8,
+    goalsbyte: usize,
+    origin: &[u8],
+) -> Vec<u8> {
     let mut buffer: u64 = 1 << 63;
     let mut bits_left_in_buffer = 63u8;
     let bt = model.to_btreemap();
@@ -41,7 +41,7 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, ori
             buffer += v;
             debug!("     New Buffer: {:b}", buffer);
             bits_left_in_buffer -= 8;
-            continue
+            continue;
         }
         // buffer filled
         if first {
@@ -57,22 +57,27 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, ori
             // if s != exp {
             //     println!("Oh oh {}", writeout);
             // }
-            debug!("{}: Buffer: {:64b} Select: {:b} Decoded to: {} Shift buffer: {}",
-            writeout, buffer, searchvalue, result[writeout], length);
+            debug!(
+                "{}: Buffer: {:64b} Select: {:b} Decoded to: {} Shift buffer: {}",
+                writeout, buffer, searchvalue, result[writeout], length
+            );
             writeout += 1;
             // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
             // result.push(sym);
             buffer <<= length;
             bits_left_in_buffer += length;
         }
-        debug_assert!(bits_left_in_buffer >= 8, "Not enough bits left in buffer for val");
+        debug_assert!(
+            bits_left_in_buffer >= 8,
+            "Not enough bits left in buffer for val"
+        );
         // buffer += (*val as u64) << bits_left_in_buffer - 8;
         debug!("     New Buffer: {:64b}", buffer);
         let v = (*val as u64) << (bits_left_in_buffer - 8);
         buffer += v;
         bits_left_in_buffer -= 8;
     }
-    debug!("GB {}", goalsbyte-writeout);
+    debug!("GB {}", goalsbyte - writeout);
     // consume bits in buffer
     while goalsbyte > writeout {
         let searchvalue = buffer >> shift;
@@ -89,13 +94,12 @@ pub fn read(data: &[u8], model: &impl Model, fillbits: u8, goalsbyte: usize, ori
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Cursor, Write};
-    use crate::encode::{Encoder, calculate_length};
+    use crate::encode::{calculate_length, Encoder};
     use crate::huffman::Huffman;
+    use std::io::{Cursor, Write};
 
     #[test]
     fn decode_numbers() {
-
         // Generate Huffman Encoder
         let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
         let mut codewords = [0usize; 256];
@@ -111,7 +115,7 @@ mod tests {
         enc.write(&words).expect("");
         enc.flush().expect("");
         if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill,enc.readbytes, &words);
+            let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &words);
             assert_eq!(words.as_slice(), decoded_words.as_slice());
         } else {
             panic!("Fill bits not set")
@@ -120,7 +124,7 @@ mod tests {
 
     #[test]
     fn decode_numbers_histogram_encoded() {
-        let words: Vec<u8> =  vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+        let words: Vec<u8> = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
         let mut histogram = [0usize; 256];
         for i in 0..words.len() {
             histogram[i] = words[i] as usize;
@@ -129,16 +133,13 @@ mod tests {
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
         // Encode `words`
-        let origin : Vec<u8> = vec![
-            0,9,9,9,9,
-            9,9,9,9,9,
-            7,0,7,4,9,
-            9,0,0,0,4,
-            0];
+        let origin: Vec<u8> = vec![
+            0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 7, 0, 7, 4, 9, 9, 0, 0, 0, 4, 0,
+        ];
         enc.write(&origin).expect("");
         enc.flush().expect("");
         if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill,enc.readbytes, &words);
+            let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &words);
             assert_eq!(origin.as_slice(), decoded_words.as_slice());
         } else {
             panic!("Fill bits not set")

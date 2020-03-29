@@ -1,11 +1,11 @@
 //! This module packages functions needed for generating the codebase of
 //! Huffman Encoding.
-use log::debug;
 use crate::model::Model;
+use log::debug;
 
 pub struct Huffman {
-    codewords: [usize;256],
-    length: [usize;256],
+    codewords: [usize; 256],
+    length: [usize; 256],
 }
 
 impl Model for Huffman {
@@ -14,24 +14,36 @@ impl Model for Huffman {
     }
     // The sentinel bits are set for `(1 << self.sentinel()) - 1`
     fn sentinel(&self) -> usize {
-        *self.length.iter().max().expect("Can not find maximum value.")
+        *self
+            .length
+            .iter()
+            .max()
+            .expect("Can not find maximum value.")
     }
     fn to_btreemap(&self) -> BTreeMap<usize, (u8, u8)> {
-        let mut result: BTreeMap<usize,(u8,u8)> = BTreeMap::new();
-        for (sym,&code) in self.codewords.iter().enumerate().filter(|(ix,_)| self.length[*ix as usize] != 0) {
-            result.insert(code << (self.sentinel() - self.length[sym]), (sym as u8, self.length[sym] as u8));
+        let mut result: BTreeMap<usize, (u8, u8)> = BTreeMap::new();
+        for (sym, &code) in self
+            .codewords
+            .iter()
+            .enumerate()
+            .filter(|(ix, _)| self.length[*ix as usize] != 0)
+        {
+            result.insert(
+                code << (self.sentinel() - self.length[sym]),
+                (sym as u8, self.length[sym] as u8),
+            );
         }
         result
     }
 }
 
-use std::io::Read;
 use crate::stats::generate_histogram;
 use std::collections::BTreeMap;
+use std::io::Read;
 
 impl Huffman {
     pub fn new(codewords: [usize; 256], length: [usize; 256]) -> Self {
-        Huffman {codewords, length}
+        Huffman { codewords, length }
     }
     pub fn from_histogram(histogram: &[usize; 256]) -> Self {
         let (codewords, length) = generate_extended_codewords(histogram);

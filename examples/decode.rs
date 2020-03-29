@@ -1,12 +1,12 @@
-use rscompress_huffman::encode::{Encoder};
-use rscompress_huffman::decode::{read};
+use rscompress_huffman::decode::read;
+use rscompress_huffman::encode::Encoder;
 use rscompress_huffman::huffman::Huffman;
 use rscompress_huffman::stats::generate_random_byte_vector;
 // use std::fs::File;
 // use std::io::prelude::*;
 // use std::io::{BufRead, BufReader, BufWriter};
-use std::io::{Cursor, Write};
 use log::info;
+use std::io::{Cursor, Write};
 use std::time::Instant;
 
 #[allow(unreachable_code)]

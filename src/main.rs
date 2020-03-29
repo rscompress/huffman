@@ -1,7 +1,7 @@
 //! A command line tool for compressing/decompressing files directly from the
 //! command line.
 use rscompress_huffman::encode::{calculate_length, Encoder};
-use rscompress_huffman::huffman::{Huffman, generate_extended_codewords};
+use rscompress_huffman::huffman::{generate_extended_codewords, Huffman};
 use rscompress_huffman::stats::generate_histogram;
 use rscompress_huffman::BUF;
 use std::env;

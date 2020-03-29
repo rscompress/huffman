@@ -1,7 +1,7 @@
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rscompress_huffman::encode::Encoder;
-use rscompress_huffman::huffman::{Huffman, generate_extended_codewords};
+use rscompress_huffman::huffman::{generate_extended_codewords, Huffman};
 use rscompress_huffman::stats::generate_histogram;
 use std::io::prelude::*;
 use std::io::Cursor;
@@ -246,9 +246,8 @@ fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
     group.finish();
 }
 
-
-use rscompress_huffman::pack::Pack;
 use rscompress_huffman::encode::calculate_length;
+use rscompress_huffman::pack::Pack;
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_packing_of_bits(c: &mut Criterion) {
@@ -261,13 +260,12 @@ fn benchmark_packing_of_bits(c: &mut Criterion) {
     }
     let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
 
-
     let mut group = c.benchmark_group("packing");
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("pack", |b| {
         b.iter(|| {
-        enc.write(&words).expect("");
-        enc.flush().expect("");
+            enc.write(&words).expect("");
+            enc.flush().expect("");
         })
     });
     group.finish();
@@ -285,25 +283,23 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     let h = Huffman::new(codewords, length);
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
-
     let mut group = c.benchmark_group("packing");
     group.throughput(Throughput::Bytes(words.len() as u64));
     group.bench_function("encode", |b| {
         b.iter(|| {
-        enc.write(&words).expect("");
-        enc.flush().expect("");
+            enc.write(&words).expect("");
+            enc.flush().expect("");
         })
     });
     group.finish();
 }
 
-use rscompress_huffman::decode::{read};
-use std::io::{Write};
-
+use rscompress_huffman::decode::read;
+use std::io::Write;
 
 fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
     // Generate Huffman Encoder
-    let words: Vec<u8> =  vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
+    let words: Vec<u8> = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
     let mut histogram = [0usize; 256];
     for i in 0..words.len() {
         histogram[i] = words[i] as usize;
@@ -312,7 +308,7 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
     // Encode `words`
-    let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
+    let origin: Vec<u8> = vec![0, 9, 9, 9, 9, 9, 7, 0, 7, 4, 9, 9, 0, 0, 0, 4, 0];
     enc.write(&origin).expect("");
     enc.flush().expect("");
     if let Some(fill) = enc.fillbits {
@@ -326,15 +322,6 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
         group.finish();
     }
 }
-
-
-
-
-
-
-
-
-
 
 criterion_group!(
     benches,

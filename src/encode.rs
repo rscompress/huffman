@@ -12,9 +12,9 @@
 //! The actual output is only written on disk as soon as it has enough bits set,
 //! that it looses no unused bits.
 
-use std::io::{Error, ErrorKind, Write};
 use crate::model::Model;
 use log::debug;
+use std::io::{Error, ErrorKind, Write};
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
 ///
@@ -52,7 +52,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     fn put(&mut self) -> std::io::Result<usize> {
         let output = (self.buffer >> 56) as u8;
         let no = self.inner.write(&[output])?;
-        debug!{"Output (norml): {:8b}", output};
+        debug! {"Output (norml): {:8b}", output};
         self.writeout += 1;
         self.buffer <<= 8;
 
@@ -88,7 +88,12 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
         for sym in buf.iter() {
             self.readbytes += 1;
             let (code, codelen) = self.model.encode(*sym);
-            debug!("Encode: Byte {}({0:b}) @ {1} -> {2} ({2:b})", sym, self.readbytes - 1, code);
+            debug!(
+                "Encode: Byte {}({0:b}) @ {1} -> {2} ({2:b})",
+                sym,
+                self.readbytes - 1,
+                code
+            );
             if codelen > 64 {
                 return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
             }
@@ -113,13 +118,12 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             ((self.buffer & 0x0000_00FF_0000_0000) >> 32) as u8,
             ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
             ((self.buffer & 0x0000_0000_00FF_0000) >> 16) as u8,
-            ((self.buffer & 0x0000_0000_0000_FF00) >> 8)  as u8,
+            ((self.buffer & 0x0000_0000_0000_FF00) >> 8) as u8,
             ((self.buffer & 0x0000_0000_0000_00FF) >> 0) as u8,
         ];
         let length = 8 - self.remaining_bits / 8;
         self.fillbits = Some((self.remaining_bits % 8) as u8);
-        self.inner
-            .write_all(&writeout[..length as usize])?;
+        self.inner.write_all(&writeout[..length as usize])?;
         self.inner.flush()?;
         self.writeout += length;
         println!("RB {} FSH {} WO {}", self.readbytes, length, self.writeout);
@@ -139,13 +143,12 @@ pub fn calculate_length(val: usize) -> usize {
     size
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::huffman::Huffman;
     use std::io::Cursor;
     use std::io::Write;
-    use crate::huffman::Huffman;
 
     #[test]
     fn encode_numbers() {
@@ -177,12 +180,10 @@ mod tests {
         assert_eq!(calculate_length(1), 1);
     }
 
-
-
     #[test]
     fn encode_stream() {
         let mut codewords = [0usize; 256];
-        let mut length = [0usize;256];
+        let mut length = [0usize; 256];
         codewords[0] = 0;
         codewords[1] = 3;
         codewords[2] = 342;

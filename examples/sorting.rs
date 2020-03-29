@@ -1,4 +1,3 @@
-
 // use std::collections::BTreeMap;
 // use std::time::Instant;
 // use rscompress_huffman::stats::generate_random_byte_vector;
@@ -59,7 +58,6 @@
 //     }
 // }
 
-
 // fn log_search_key_or_next_smaller_new<C: PartialEq + PartialOrd + Copy>(key: C, data: &[C]) -> C {
 //     let v = data[data.len()/2];
 //     if v == key || data.len() == 1 {
@@ -98,6 +96,4 @@
 //     }
 // }
 
-fn main() {
-
-}
+fn main() {}

@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 pub trait Model {

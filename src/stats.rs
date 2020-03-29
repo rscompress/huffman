@@ -30,7 +30,6 @@ pub fn generate_histogram(reader: &mut impl Read) -> [usize; 256] {
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 
-
 /// Generate vector with random byte values
 ///
 /// Shameless copy & paste from [reddit](https://www.reddit.com/r/rust/comments/7ptbei/rust_vector_of_random_numbers_in_range/)
@@ -39,9 +38,8 @@ pub fn generate_random_byte_vector(min: u8, max: u8, count: usize, weights: &[u8
     let choices: Vec<_> = (min..max).collect();
     let dist = WeightedIndex::new(weights).unwrap();
     assert_eq!(choices.len(), weights.len());
-    (0..count).map(|_| { choices[dist.sample(&mut rng)] }).collect()
+    (0..count).map(|_| choices[dist.sample(&mut rng)]).collect()
 }
-
 
 #[cfg(test)]
 mod tests {

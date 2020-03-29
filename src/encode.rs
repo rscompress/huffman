@@ -126,7 +126,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
         self.inner.write_all(&writeout[..length as usize])?;
         self.inner.flush()?;
         self.writeout += length;
-        println!("RB {} FSH {} WO {}", self.readbytes, length, self.writeout);
+        debug!("RB {} FSH {} WO {}", self.readbytes, length, self.writeout);
         Ok(())
     }
 }

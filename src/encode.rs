@@ -25,7 +25,7 @@ use std::io::{Error, ErrorKind, Write};
 /// reason why `codewords` is an array of `usize` rather than `u8`.
 pub struct Encoder<'a, W: Write, M: Model> {
     pub inner: W,
-    model: &'a M,
+    pub model: &'a M,
     buffer: u64,
     remaining_bits: usize,
     pub fillbits: Option<u8>,

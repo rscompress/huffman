@@ -1,6 +1,48 @@
+use crate::encode::Encoder;
 use crate::model::Model;
 use log::debug;
 use std::collections::BTreeMap;
+use std::io::{Read, Write};
+
+pub struct Decoder<R: Read> {
+    inner: R,
+    buffer: u64,
+    bits_left_in_buffer: u8,
+    bt: BTreeMap<usize, (u8, u8)>,
+    sentinel: usize,
+    first: bool,
+    writeout: usize,
+    goalsbyte: usize,
+    shift: usize,
+}
+
+impl<R:Read> Decoder<R> {
+    pub fn new<W:Write, M: Model>(reader: R, encoder: Encoder<W,M>) -> Self {
+        Decoder{
+            inner: reader,
+            buffer: 1 << 63,
+            bits_left_in_buffer: 63,
+            bt: encoder.model.to_btreemap(),
+            sentinel: encoder.model.sentinel(),
+            first: true,
+            writeout: 0,
+            goalsbyte: encoder.writeout,
+            shift: 64 - encoder.model.sentinel()
+        }
+    }
+}
+
+use std::io::Error;
+
+impl<R: Read> Read for Decoder<R> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error>{
+        // Implementation of BufReader
+        // https://doc.rust-lang.org/src/std/io/buffered.rs.html#240-275
+        unimplemented!()
+    }
+}
+
+
 
 pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
     let mut iter = tree.range(..key + 1);

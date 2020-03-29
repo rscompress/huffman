@@ -6,7 +6,7 @@ pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize
     let mut iter = tree.range(..key + 1);
 
     if let Some((_, v)) = iter.next_back() {
-        return *v;
+        *v
     } else {
         panic!("Panic!!!!")
     }

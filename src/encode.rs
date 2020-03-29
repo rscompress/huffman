@@ -119,7 +119,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
             ((self.buffer & 0x0000_0000_00FF_0000) >> 16) as u8,
             ((self.buffer & 0x0000_0000_0000_FF00) >> 8) as u8,
-            ((self.buffer & 0x0000_0000_0000_00FF) >> 0) as u8,
+            (self.buffer & 0x0000_0000_0000_00FF) as u8,
         ];
         let length = 8 - self.remaining_bits / 8;
         self.fillbits = Some((self.remaining_bits % 8) as u8);

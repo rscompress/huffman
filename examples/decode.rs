@@ -31,9 +31,8 @@ fn main() {
         enc.write(&origin).expect("");
         enc.flush().expect("");
         info!("Encoded length: {}", enc.writeout);
-        let fill = enc.fillbits.unwrap();
         let now = Instant::now();
-        let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &origin);
+        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
         info!("Time: {}", now.elapsed().as_secs_f32());
         assert_eq!(decoded_words, origin);
         info!("{} successful", i)

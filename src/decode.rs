@@ -21,9 +21,7 @@ fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Ve
 pub fn read(
     data: &[u8],
     model: &impl Model,
-    fillbits: u8,
     goalsbyte: usize,
-    origin: &[u8],
 ) -> Vec<u8> {
     let mut buffer: u64 = 1 << 63;
     let mut bits_left_in_buffer = 63u8;
@@ -115,7 +113,7 @@ mod tests {
         enc.write(&words).expect("");
         enc.flush().expect("");
         if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &words);
+            let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
             assert_eq!(words.as_slice(), decoded_words.as_slice());
         } else {
             panic!("Fill bits not set")
@@ -139,7 +137,7 @@ mod tests {
         enc.write(&origin).expect("");
         enc.flush().expect("");
         if let Some(fill) = enc.fillbits {
-            let decoded_words = read(enc.inner.get_ref(), &h, fill, enc.readbytes, &words);
+            let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
             assert_eq!(origin.as_slice(), decoded_words.as_slice());
         } else {
             panic!("Fill bits not set")

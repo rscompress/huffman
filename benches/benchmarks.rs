@@ -295,7 +295,6 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
 }
 
 use rscompress_huffman::decode::{read, search_key_or_next_small_key};
-use rscompress_huffman::stats::generate_random_byte_vector;
 use rscompress_huffman::model::Model;
 use std::io::Write;
 
@@ -314,18 +313,16 @@ fn benchmark_packing_of_bits_decode(c: &mut Criterion) {
     enc.write(&origin).expect("");
     enc.flush().expect("");
 
-    let inputs = (enc.inner.get_ref(), &h, enc.fillbits.unwrap(), enc.readbytes, &origin);
+    let inputs = (enc.inner.get_ref(), &h, enc.readbytes);
 
-    if let Some(fill) = enc.fillbits {
-        let mut group = c.benchmark_group("packing");
-        group.throughput(Throughput::Bytes(origin.len() as u64));
-        group.bench_with_input(BenchmarkId::new("decoding", enc.readbytes), &inputs, |b, &inputs| {
-            b.iter(|| {
-                read(inputs.0, inputs.1, inputs.2, inputs.3, inputs.4);
-            })
-        });
-        group.finish();
-    }
+    let mut group = c.benchmark_group("packing");
+    group.throughput(Throughput::Bytes(origin.len() as u64));
+    group.bench_with_input(BenchmarkId::new("decoding", enc.readbytes), &inputs, |b, &inputs| {
+        b.iter(|| {
+            read(inputs.0, inputs.1, inputs.2);
+        })
+    });
+    group.finish();
 }
 
 use std::collections::BTreeMap;
@@ -381,10 +378,12 @@ criterion_group!(
 );
 criterion_group!(
     packing,
-    // benchmark_packing_of_bits,
-    // benchmark_packing_of_bits_encode,
+    benchmark_packing_of_bits,
+    benchmark_packing_of_bits_encode,
+    benchmark_packing_of_bits_decode,
     benchmark_searching_for_key_value,
 );
 criterion_group!(io, benchmark_io);
+criterion_group!(search, benchmark_searching_for_key_value);
 
-criterion_main!(packing);
+criterion_main!(search);

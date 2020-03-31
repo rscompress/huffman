@@ -61,14 +61,13 @@ fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Ve
 }
 
 pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
-    let mut buffer: u64 = 1 << 63;
-    let mut bits_left_in_buffer = 63u8;
+    let mut buffer: u64 = 0;
+    let mut bits_left_in_buffer = 64u8;
     let bt = model.to_btreemap();
     debug!("{:?}", &bt);
     let s = model.sentinel();
     let shift = 64 - s;
     let mut result: Vec<u8> = Vec::with_capacity(data.len());
-    let mut first = true;
     let mut writeout = 0;
     for val in data.iter() {
         if bits_left_in_buffer >= 8 {
@@ -80,11 +79,6 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
             continue;
         }
         // buffer filled
-        if first {
-            buffer <<= 1;
-            first = false;
-            bits_left_in_buffer += 1;
-        }
         while (64 - bits_left_in_buffer) as usize >= s {
             let searchvalue = buffer >> shift;
             let length = decode_next(searchvalue, &bt, &mut result);

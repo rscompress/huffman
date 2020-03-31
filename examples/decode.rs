@@ -21,8 +21,10 @@ fn main() {
 
     // Encode `words`
     // let origin : Vec<u8> = vec![0,9,9,9,9,9,7,0,7,4,9,9,0,0,0,4,0];
-    for i in 0..50 {
-        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 70309444, &words);
+    for i in 0..150 {
+        // let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 32, &words);
+        let origin: Vec<u8> = vec![0, 1, 0, 1, 6, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 2, 1, 0, 1, 0, 0, 5, 0, 0, 1];
+        // println!("{:?}", origin);
         // let mut origin: Vec<u8> = Vec::new();
         // let mut r = BufReader::with_capacity(4096, File::open("erorrs.raw").unwrap());
         // r.read_to_end(&mut origin).unwrap();
@@ -34,6 +36,7 @@ fn main() {
         let now = Instant::now();
         let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
         info!("Time: {}", now.elapsed().as_secs_f32());
+
         assert_eq!(decoded_words, origin);
         info!("{} successful", i)
     }

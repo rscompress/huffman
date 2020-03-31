@@ -1,6 +1,6 @@
 use crate::encode::Encoder;
 use crate::model::Model;
-use log::debug;
+use log::{debug, info};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
@@ -11,13 +11,14 @@ pub struct Decoder<R: Read> {
     bt: BTreeMap<usize, (u8, u8)>,
     sentinel: usize,
     first: bool,
+    pos: usize,
     writeout: usize,
     goalsbyte: usize,
-    shift: usize,
+    shift: u8,
 }
 
 impl<R:Read> Decoder<R> {
-    pub fn new<W:Write, M: Model>(reader: R, encoder: Encoder<W,M>) -> Self {
+    pub fn new<W:Write, M: Model>(reader: R, encoder: &Encoder<W,M>) -> Self {
         Decoder{
             inner: reader,
             buffer: 1 << 63,
@@ -25,9 +26,10 @@ impl<R:Read> Decoder<R> {
             bt: encoder.model.to_btreemap(),
             sentinel: encoder.model.sentinel(),
             first: true,
+            pos: 0,
             writeout: 0,
-            goalsbyte: encoder.writeout,
-            shift: 64 - encoder.model.sentinel()
+            goalsbyte: encoder.readbytes,
+            shift: 64 - encoder.model.sentinel() as u8
         }
     }
 }
@@ -36,9 +38,61 @@ use std::io::Error;
 
 impl<R: Read> Read for Decoder<R> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error>{
-        // Implementation of BufReader
-        // https://doc.rust-lang.org/src/std/io/buffered.rs.html#240-275
-        unimplemented!()
+        let nbytes = (self.goalsbyte - self.writeout).min(buf.len());
+        let mut consumed = 0;
+        let mut iter = self.inner.by_ref().bytes(); //.skip(self.pos);
+        while let Some(Ok(val)) = iter.next() {
+            info!("Reading {}", val);
+            if self.bits_left_in_buffer >= 8 {
+                // There is still room for a byte in the buffer -> fill it up
+                let v = (val as u64) << (self.bits_left_in_buffer - 8);
+                self.buffer += v;
+                self.bits_left_in_buffer -= 8;
+                continue;
+            }
+            if self.first {
+                self.buffer <<= 1;
+                self.first = false;
+                self.bits_left_in_buffer += 1;
+            }
+            while (64 - self.bits_left_in_buffer) as usize >= self.sentinel {
+                // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
+                // or the buffer needs to be filled up again
+                let searchvalue = self.buffer >> self.shift;
+                let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
+                // info!("Decoded {} {} {}", sym, length, consumed);
+                buf[consumed] = sym;
+                consumed += 1;
+                self.writeout += 1;
+                self.buffer <<= length;
+                self.bits_left_in_buffer += length;
+                if consumed >= nbytes {
+                    // info!("Break");
+                    break
+                }
+            }
+            // Do not forget to add the current value `val` into the buffer
+            debug_assert!(self.bits_left_in_buffer >= 8);
+            let v = (val as u64) << (self.bits_left_in_buffer - 8);
+            self.buffer += v;
+            self.bits_left_in_buffer -= 8;
+            if consumed >= nbytes {
+                // If consumed was the reason for the break above, return written bytes
+                // otherwise continue
+                return Ok(consumed)
+            }
+        }
+        // assert!(self.goalsbyte - self.writeout == nbytes);
+        while self.goalsbyte > self.writeout {
+            let searchvalue = self.buffer >> self.shift;
+            let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
+            buf[consumed] = sym;
+            consumed += 1;
+            self.writeout += 1;
+            self.buffer <<= length;
+            self.bits_left_in_buffer += length;
+        }
+        Ok(consumed)
     }
 }
 

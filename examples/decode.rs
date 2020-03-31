@@ -25,7 +25,7 @@ fn main() {
     for j in 0..50 {
 
         // Generate random data
-        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 25, &words);
+        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 47, &words);
 
         // Generate Huffman Model
         let h = Huffman::from_histogram(&histogram);
@@ -34,7 +34,7 @@ fn main() {
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         enc.write(&origin).expect("");
         enc.flush().expect("");
-        info!("Encoded length: {}", enc.writeout);
+        // info!("Encoded length: {}", enc.writeout);
 
         // let now = Instant::now();
         let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
@@ -42,21 +42,16 @@ fn main() {
 
         let reader = BufReader::new(Cursor::new(enc.inner.get_ref()));
         let mut decoder = Decoder::new(reader, &enc);
-        let mut buf = [0u8;32];
+        let mut buf = [0u8;15];
+        let mut sum = 0usize;
 
-        // for i in (0..100) {
-        //     let nbytes = decoder.read(&mut buf).unwrap();
-        //     assert_eq!(origin[i*buf.len()..buf.len()*(i+1)], decoded_words[i*buf.len()..buf.len()*(i+1)], "Not equal (old method)");
-        //     // info!("{} Old method looks good", i);
-        //     assert_eq!(origin[i*buf.len()..buf.len()*(i+1)], buf[..], "Not equal {}", nbytes);
-        //     info!("{} Looks good: {:?} [{}]", i, buf, nbytes);
-        // }
-        let nbytes = decoder.read(&mut buf).unwrap();
-
-        assert_eq!(decoded_words[..], origin[..]);
-        info!("Old method successful");
-        // Original encoding successful
-        assert_eq!(buf[..nbytes], origin[..]);
-        info!("New method successful");
+        for i in (0..4) {
+            let nbytes = decoder.read(&mut buf).unwrap();
+            assert_eq!(origin[sum..sum+nbytes], decoded_words[sum..sum+nbytes], "Not equal (old method)");
+            info!("[{},{}] Old method looks good", j, i);
+            assert_eq!(origin[sum..(sum+nbytes)], buf[..nbytes], "Not equal {}", nbytes);
+            sum+= nbytes;
+            info!("[{},{}] New method looks good", j, i);
+        }
     }
 }

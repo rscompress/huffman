@@ -10,7 +10,6 @@ pub struct Decoder<R: Read> {
     bits_left_in_buffer: u8,
     bt: BTreeMap<usize, (u8, u8)>,
     sentinel: usize,
-    first: bool,
     pos: usize,
     writeout: usize,
     goalsbyte: usize,
@@ -21,11 +20,10 @@ impl<R:Read> Decoder<R> {
     pub fn new<W:Write, M: Model>(reader: R, encoder: &Encoder<W,M>) -> Self {
         Decoder{
             inner: reader,
-            buffer: 1 << 63,
-            bits_left_in_buffer: 63,
+            buffer: 0,
+            bits_left_in_buffer: 64,
             bt: encoder.model.to_btreemap(),
             sentinel: encoder.model.sentinel(),
-            first: true,
             pos: 0,
             writeout: 0,
             goalsbyte: encoder.readbytes,
@@ -42,7 +40,7 @@ impl<R: Read> Read for Decoder<R> {
         let mut consumed = 0;
         let mut iter = self.inner.by_ref().bytes(); //.skip(self.pos);
         while let Some(Ok(val)) = iter.next() {
-            info!("Reading {}", val);
+            // info!("Reading {}", val);
             if self.bits_left_in_buffer >= 8 {
                 // There is still room for a byte in the buffer -> fill it up
                 let v = (val as u64) << (self.bits_left_in_buffer - 8);
@@ -50,12 +48,7 @@ impl<R: Read> Read for Decoder<R> {
                 self.bits_left_in_buffer -= 8;
                 continue;
             }
-            if self.first {
-                self.buffer <<= 1;
-                self.first = false;
-                self.bits_left_in_buffer += 1;
-            }
-            while (64 - self.bits_left_in_buffer) as usize >= self.sentinel {
+            while consumed < nbytes && (64 - self.bits_left_in_buffer) as usize >= self.sentinel {
                 // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
                 // or the buffer needs to be filled up again
                 let searchvalue = self.buffer >> self.shift;
@@ -66,10 +59,6 @@ impl<R: Read> Read for Decoder<R> {
                 self.writeout += 1;
                 self.buffer <<= length;
                 self.bits_left_in_buffer += length;
-                if consumed >= nbytes {
-                    // info!("Break");
-                    break
-                }
             }
             // Do not forget to add the current value `val` into the buffer
             debug_assert!(self.bits_left_in_buffer >= 8);
@@ -82,10 +71,12 @@ impl<R: Read> Read for Decoder<R> {
                 return Ok(consumed)
             }
         }
+        // info!("{} {} {} {}", consumed, self.writeout, self.goalsbyte, nbytes);
         // assert!(self.goalsbyte - self.writeout == nbytes);
-        while self.goalsbyte > self.writeout {
+        while consumed < nbytes {
             let searchvalue = self.buffer >> self.shift;
             let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
+            // info!("{} {:?} {}", consumed, buf, sym);
             buf[consumed] = sym;
             consumed += 1;
             self.writeout += 1;

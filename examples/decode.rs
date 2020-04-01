@@ -58,7 +58,6 @@ fn main() {
         let reader = BufReader::new(Cursor::new(enc.inner.get_ref()));
         let mut decoder = Decoder::new(reader, &enc);
         let mut buf = [0u8;15];
-        let mut sum = 0usize;
         let mut full : Vec<u8> = Vec::with_capacity(origin.len());
 
         // Check results of both methods
@@ -78,6 +77,6 @@ fn main() {
         info!("N {}", now.elapsed().as_secs_f32());
         assert_eq!(full, origin);
         assert_eq!(decoded_words, full);
-        info!("{} Success, read {}", j, sum)
+        info!("{} Success", j)
     }
 }

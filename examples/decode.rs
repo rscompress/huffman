@@ -64,9 +64,10 @@ fn main() {
             assert_eq!(origin[sum..sum+nbytes], decoded_words[sum..sum+nbytes], "Not equal (old method)");
             // info!("[{},{}] Old method looks good", j);
             assert_eq!(origin[sum..(sum+nbytes)], buf[..nbytes], "Not equal [{};{}]", sum, sum+nbytes);
+            // info!("Range {}-{} fine", sum, sum+nbytes);
             sum+= nbytes;
             // info!("[{},{}] New method looks good", j);
         }
-        info!("{} Success", j)
+        info!("{} Success, read {}", j, sum)
     }
 }

@@ -36,6 +36,7 @@ fn main() {
         let mut origin: Vec<u8> = Vec::new();
         let mut r = BufReader::with_capacity(4096, File::open("errors.raw").unwrap());
         r.read_to_end(&mut origin).unwrap();
+        info!("Size: {}", origin.len());
 
 
         // Generate Huffman Model

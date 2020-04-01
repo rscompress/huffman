@@ -38,43 +38,46 @@ impl<R: Read> Read for Decoder<R> {
         let mut consumed = 0;
         let mut iter = self.inner.by_ref().bytes(); //.skip(self.pos);
         while let Some(Ok(val)) = iter.next() {
-            // info!("Reading {}", val);
-            if self.bits_left_in_buffer >= 8 {
+            // debug!("Reading {}", val);
+            if self.bits_left_in_buffer >= 16 {
                 // There is still room for a byte in the buffer -> fill it up
                 let v = (val as u64) << (self.bits_left_in_buffer - 8);
                 self.buffer += v;
                 self.bits_left_in_buffer -= 8;
+                debug!("Add: {:064b} BLE {:2}", self.buffer, self.bits_left_in_buffer);
                 continue;
             }
-            while consumed < nbytes && (64 - self.bits_left_in_buffer) as usize >= self.sentinel {
+            while (64 - self.bits_left_in_buffer - 8) as usize >= self.sentinel && consumed < nbytes {
                 // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
                 // or the buffer needs to be filled up again
                 let searchvalue = self.buffer >> self.shift;
                 let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
-                // info!("Decoded {} {} {}", sym, length, consumed);
+                // debug!("Decoded {} {} {}", sym, length, consumed);
                 buf[consumed] = sym;
                 consumed += 1;
                 self.writeout += 1;
                 self.buffer <<= length;
+                debug!("Rem: {:064b} SYM {:b} LEN {} SVA {} CNS {}", self.buffer, sym, length, searchvalue, consumed);
                 self.bits_left_in_buffer += length;
             }
+            debug!("Out: {:064b} BLE {} >", self.buffer, self.bits_left_in_buffer);
             // Do not forget to add the current value `val` into the buffer
-            debug_assert!(self.bits_left_in_buffer >= 8);
             let v = (val as u64) << (self.bits_left_in_buffer - 8);
             self.buffer += v;
             self.bits_left_in_buffer -= 8;
             if consumed >= nbytes {
                 // If consumed was the reason for the break above, return written bytes
                 // otherwise continue
+                debug!("Out: {:064b} BLE {} >", self.buffer, self.bits_left_in_buffer);
                 return Ok(consumed)
             }
         }
-        // info!("{} {} {} {}", consumed, self.writeout, self.goalsbyte, nbytes);
+        // debug!("{} {} {} {}", consumed, self.writeout, self.goalsbyte, nbytes);
         // assert!(self.goalsbyte - self.writeout == nbytes);
         while consumed < nbytes {
             let searchvalue = self.buffer >> self.shift;
             let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
-            // info!("{} {:?} {}", consumed, buf, sym);
+            // debug!("{} {:?} {}", consumed, buf, sym);
             buf[consumed] = sym;
             consumed += 1;
             self.writeout += 1;

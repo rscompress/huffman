@@ -1,15 +1,20 @@
 use crate::encode::Encoder;
 use crate::model::Model;
-use log::{debug, info};
+use log::debug;
 use std::collections::BTreeMap;
+use std::io::Error;
 use std::io::{Read, Write};
+use succinct::bit_vec::BitVecMut;
+use succinct::rank::BitRankSupport;
+use succinct::rsdict::RsDict;
+use succinct::BitVector;
 
 pub struct Decoder<R: Read> {
     inner: R,
     buffer: u64,
     bits_left_in_buffer: u8,
     // bt: BTreeMap<usize, (u8, u8)>,
-    table: Vec<(u8,u8)>,
+    table: Vec<(u8, u8)>,
     rbv: RsDict,
     sentinel: usize,
     writeout: usize,
@@ -17,9 +22,9 @@ pub struct Decoder<R: Read> {
     shift: u8,
 }
 
-impl<R:Read> Decoder<R> {
-    pub fn new<W:Write, M: Model>(reader: R, encoder: &Encoder<W,M>) -> Self {
-        Decoder{
+impl<R: Read> Decoder<R> {
+    pub fn new<W: Write, M: Model>(reader: R, encoder: &Encoder<W, M>) -> Self {
+        Decoder {
             inner: reader,
             buffer: 0,
             bits_left_in_buffer: 64,
@@ -34,15 +39,13 @@ impl<R:Read> Decoder<R> {
             sentinel: encoder.model.sentinel(),
             writeout: 0,
             goalsbyte: encoder.readbytes,
-            shift: 64 - encoder.model.sentinel() as u8
+            shift: 64 - encoder.model.sentinel() as u8,
         }
     }
 }
 
-use std::io::Error;
-
 impl<R: Read> Read for Decoder<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error>{
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
         let nbytes = (self.goalsbyte - self.writeout).min(buf.len());
         let mut consumed = 0;
         let mut iter = self.inner.by_ref().bytes(); //.skip(self.pos);
@@ -53,10 +56,14 @@ impl<R: Read> Read for Decoder<R> {
                 let v = (val as u64) << (self.bits_left_in_buffer - 8);
                 self.buffer += v;
                 self.bits_left_in_buffer -= 8;
-                debug!("Add: {:064b} BLE {:2}", self.buffer, self.bits_left_in_buffer);
+                debug!(
+                    "Add: {:064b} BLE {:2}",
+                    self.buffer, self.bits_left_in_buffer
+                );
                 continue;
             }
-            while (64 - self.bits_left_in_buffer - 8) as usize >= self.sentinel && consumed < nbytes {
+            while (64 - self.bits_left_in_buffer - 8) as usize >= self.sentinel && consumed < nbytes
+            {
                 // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
                 // or the buffer needs to be filled up again
                 let searchvalue = self.buffer >> self.shift;
@@ -67,10 +74,16 @@ impl<R: Read> Read for Decoder<R> {
                 consumed += 1;
                 self.writeout += 1;
                 self.buffer <<= length;
-                debug!("Rem: {:064b} SYM {:b} LEN {} SVA {} CNS {}", self.buffer, sym, length, searchvalue, consumed);
+                debug!(
+                    "Rem: {:064b} SYM {:b} LEN {} SVA {} CNS {}",
+                    self.buffer, sym, length, searchvalue, consumed
+                );
                 self.bits_left_in_buffer += length;
             }
-            debug!("Out: {:064b} BLE {} >", self.buffer, self.bits_left_in_buffer);
+            debug!(
+                "Out: {:064b} BLE {} >",
+                self.buffer, self.bits_left_in_buffer
+            );
             // Do not forget to add the current value `val` into the buffer
             let v = (val as u64) << (self.bits_left_in_buffer - 8);
             self.buffer += v;
@@ -78,8 +91,11 @@ impl<R: Read> Read for Decoder<R> {
             if consumed >= nbytes {
                 // If consumed was the reason for the break above, return written bytes
                 // otherwise continue
-                debug!("Out: {:064b} BLE {} >", self.buffer, self.bits_left_in_buffer);
-                return Ok(consumed)
+                debug!(
+                    "Out: {:064b} BLE {} >",
+                    self.buffer, self.bits_left_in_buffer
+                );
+                return Ok(consumed);
             }
         }
         // debug!("{} {} {} {}", consumed, self.writeout, self.goalsbyte, nbytes);
@@ -99,17 +115,10 @@ impl<R: Read> Read for Decoder<R> {
     }
 }
 
-use succinct::BitVector;
-use succinct::bit_vec::BitVecMut;
-use succinct::rsdict::RsDict;
-use succinct::rank::BitRankSupport;
-
-
-
-pub fn prepare_lookup(bt: &BTreeMap<usize, (u8, u8)>) -> (Vec<(u8, u8)>,  RsDict) {
-    let table: Vec<(u8,u8)> = bt.values().cloned().collect();
+pub fn prepare_lookup(bt: &BTreeMap<usize, (u8, u8)>) -> (Vec<(u8, u8)>, RsDict) {
+    let table: Vec<(u8, u8)> = bt.values().cloned().collect();
     let keys: Vec<usize> = bt.keys().cloned().collect();
-    let m : usize = keys[keys.len()-1];
+    let m: usize = keys[keys.len() - 1];
     let mut bv: BitVector<u64> = BitVector::with_fill(m as u64 + 1, false);
     for k in keys {
         bv.set_bit(k as u64, true);
@@ -130,12 +139,6 @@ pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize
     } else {
         panic!("Panic!!!!")
     }
-}
-
-fn decode_next(searchvalue: u64, bt: &BTreeMap<usize, (u8, u8)>, result: &mut Vec<u8>) -> u8 {
-    let (sym, length) = search_key_or_next_small_key(&bt, searchvalue as usize);
-    result.push(sym);
-    length
 }
 
 pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {

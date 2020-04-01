@@ -6,3 +6,4 @@ Cargo.lock
 *.data.old
 **/massif.out.*
 benchmarks/*
+errors.raw

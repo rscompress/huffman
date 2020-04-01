@@ -10,7 +10,6 @@ pub struct Decoder<R: Read> {
     bits_left_in_buffer: u8,
     bt: BTreeMap<usize, (u8, u8)>,
     sentinel: usize,
-    pos: usize,
     writeout: usize,
     goalsbyte: usize,
     shift: u8,
@@ -24,7 +23,6 @@ impl<R:Read> Decoder<R> {
             bits_left_in_buffer: 64,
             bt: encoder.model.to_btreemap(),
             sentinel: encoder.model.sentinel(),
-            pos: 0,
             writeout: 0,
             goalsbyte: encoder.readbytes,
             shift: 64 - encoder.model.sentinel() as u8

@@ -26,17 +26,17 @@ fn main() {
     for j in 0..50 {
 
         // Generate random data
-        // let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 1542, &words);
+        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 400_000, &words);
         // If error found save to file
         // let dfile = File::create("errors.raw").expect("Failed to create destination file");
         // let mut w = BufWriter::with_capacity(4096, dfile);
         // w.write_all(&origin).unwrap();
 
         // If error found, read from file
-        let mut origin: Vec<u8> = Vec::new();
-        let mut r = BufReader::with_capacity(4096, File::open("errors.raw").unwrap());
-        r.read_to_end(&mut origin).unwrap();
-        info!("Size: {}", origin.len());
+        // let mut origin: Vec<u8> = Vec::new();
+        // let mut r = BufReader::with_capacity(4096, File::open("errors.raw").unwrap());
+        // r.read_to_end(&mut origin).unwrap();
+        // info!("Size: {}", origin.len());
 
 
         // Generate Huffman Model
@@ -55,6 +55,7 @@ fn main() {
         let mut decoder = Decoder::new(reader, &enc);
         let mut buf = [0u8;15];
         let mut sum = 0usize;
+        let mut full : Vec<u8> = Vec::with_capacity(origin.len());
 
         // Check results of both methods
         while let Ok(nbytes) = decoder.read(&mut buf) {
@@ -67,7 +68,10 @@ fn main() {
             // info!("Range {}-{} fine", sum, sum+nbytes);
             sum+= nbytes;
             // info!("[{},{}] New method looks good", j);
+            full.append(&mut buf[..nbytes].to_vec());
         }
+        assert_eq!(full, origin);
+        assert_eq!(decoded_words, full);
         info!("{} Success, read {}", j, sum)
     }
 }

@@ -26,7 +26,7 @@ fn main() {
     for j in 0..50 {
 
         // Generate random data
-        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 100_000_000, &words);
+        let origin: Vec<u8> = generate_random_byte_vector(0, words.len() as u8, 500_000_000, &words);
         // If error found save to file
         // let dfile = File::create("errors.raw").expect("Failed to create destination file");
         // let mut w = BufWriter::with_capacity(4096, dfile);

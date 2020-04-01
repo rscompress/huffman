@@ -8,7 +8,9 @@ pub struct Decoder<R: Read> {
     inner: R,
     buffer: u64,
     bits_left_in_buffer: u8,
-    bt: BTreeMap<usize, (u8, u8)>,
+    // bt: BTreeMap<usize, (u8, u8)>,
+    table: Vec<(u8,u8)>,
+    rbv: RsDict,
     sentinel: usize,
     writeout: usize,
     goalsbyte: usize,
@@ -21,7 +23,14 @@ impl<R:Read> Decoder<R> {
             inner: reader,
             buffer: 0,
             bits_left_in_buffer: 64,
-            bt: encoder.model.to_btreemap(),
+            table: {
+                let (t, _) = prepare_lookup(&encoder.model.to_btreemap());
+                t
+            },
+            rbv: {
+                let (_, v) = prepare_lookup(&encoder.model.to_btreemap());
+                v
+            },
             sentinel: encoder.model.sentinel(),
             writeout: 0,
             goalsbyte: encoder.readbytes,
@@ -51,7 +60,8 @@ impl<R: Read> Read for Decoder<R> {
                 // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
                 // or the buffer needs to be filled up again
                 let searchvalue = self.buffer >> self.shift;
-                let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
+                let pos = self.rbv.rank1(searchvalue + 1) as usize - 1;
+                let (sym, length) = self.table[pos];
                 // debug!("Decoded {} {} {}", sym, length, consumed);
                 buf[consumed] = sym;
                 consumed += 1;
@@ -76,7 +86,8 @@ impl<R: Read> Read for Decoder<R> {
         // assert!(self.goalsbyte - self.writeout == nbytes);
         while consumed < nbytes {
             let searchvalue = self.buffer >> self.shift;
-            let (sym, length) = search_key_or_next_small_key(&self.bt, searchvalue as usize);
+            let pos = self.rbv.rank1(searchvalue + 1) as usize - 1;
+            let (sym, length) = self.table[pos];
             // debug!("{} {:?} {}", consumed, buf, sym);
             buf[consumed] = sym;
             consumed += 1;
@@ -88,7 +99,28 @@ impl<R: Read> Read for Decoder<R> {
     }
 }
 
+use succinct::BitVector;
+use succinct::bit_vec::BitVecMut;
+use succinct::rsdict::RsDict;
+use succinct::rank::BitRankSupport;
 
+
+
+pub fn prepare_lookup(bt: &BTreeMap<usize, (u8, u8)>) -> (Vec<(u8, u8)>,  RsDict) {
+    let table: Vec<(u8,u8)> = bt.values().cloned().collect();
+    let keys: Vec<usize> = bt.keys().cloned().collect();
+    let m : usize = keys[keys.len()-1];
+    let mut bv: BitVector<u64> = BitVector::with_fill(m as u64 + 1, false);
+    for k in keys {
+        bv.set_bit(k as u64, true);
+    }
+    let mut jbv = RsDict::new();
+    for bit in bv.iter() {
+        jbv.push(bit);
+    }
+
+    (table, jbv)
+}
 
 pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
     let mut iter = tree.range(..key + 1);
@@ -111,6 +143,7 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
     let mut bits_left_in_buffer = 64u8;
     let bt = model.to_btreemap();
     debug!("{:?}", &bt);
+    let (table, rbv) = prepare_lookup(&model.to_btreemap());
     let s = model.sentinel();
     let shift = 64 - s;
     let mut result: Vec<u8> = Vec::with_capacity(data.len());
@@ -127,7 +160,9 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
         // buffer filled
         while (64 - bits_left_in_buffer) as usize >= s {
             let searchvalue = buffer >> shift;
-            let length = decode_next(searchvalue, &bt, &mut result);
+            let pos = rbv.rank1(searchvalue + 1) as usize - 1;
+            let (sym, length) = table[pos];
+            result.push(sym);
             // let s = result[writeout];
             // let exp = origin[writeout];
             // if s != exp {
@@ -157,7 +192,9 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
     // consume bits in buffer
     while goalsbyte > writeout {
         let searchvalue = buffer >> shift;
-        let length = decode_next(searchvalue, &bt, &mut result);
+        let pos = rbv.rank1(searchvalue + 1) as usize - 1;
+        let (sym, length) = table[pos];
+        result.push(sym);
         writeout += 1;
         // let (sym,length) = search_key_or_next_small_key(&bt, searchvalue as usize);
         // result.push(sym);

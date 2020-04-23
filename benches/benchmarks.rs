@@ -247,29 +247,6 @@ fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
 }
 
 use rscompress_huffman::encode::calculate_length;
-use rscompress_huffman::pack::Pack;
-
-// Looking into codeword generation and it takes soo long
-fn benchmark_packing_of_bits(c: &mut Criterion) {
-    let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
-    let mut codewords = [0usize; 256];
-    let mut length = [0usize; 256];
-    for word in words.iter() {
-        codewords[*word as usize] = *word as usize;
-        length[*word as usize] = calculate_length(*word as usize);
-    }
-    let mut enc = Pack::new(Cursor::new(Vec::new()), codewords, length);
-
-    let mut group = c.benchmark_group("packing");
-    group.throughput(Throughput::Bytes(words.len() as u64));
-    group.bench_function("pack", |b| {
-        b.iter(|| {
-            enc.write(&words).expect("");
-            enc.flush().expect("");
-        })
-    });
-    group.finish();
-}
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
@@ -380,7 +357,6 @@ criterion_group!(
 );
 criterion_group!(
     packing,
-    benchmark_packing_of_bits,
     benchmark_packing_of_bits_encode,
     benchmark_packing_of_bits_decode,
     benchmark_searching_for_key_value,

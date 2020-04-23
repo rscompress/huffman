@@ -20,5 +20,4 @@ pub mod decode;
 pub mod encode;
 pub mod huffman;
 pub mod model;
-pub mod pack;
 pub mod stats;

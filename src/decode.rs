@@ -1,4 +1,5 @@
 use crate::encode::Encoder;
+use crate::header::Header;
 use crate::model::Model;
 use log::debug;
 use std::collections::BTreeMap;
@@ -40,6 +41,25 @@ impl<R: Read> Decoder<R> {
             writeout: 0,
             goalsbyte: encoder.readbytes,
             shift: 64 - encoder.model.sentinel() as u8,
+        }
+    }
+    pub fn from_header(header: Header, reader: R) -> Self {
+        Decoder {
+            inner: reader,
+            buffer: 0,
+            bits_left_in_buffer: 64,
+            table: {
+                let (t, _) = prepare_lookup(&header.btree);
+                t
+            },
+            rbv: {
+                let (_, v) = prepare_lookup(&header.btree);
+                v
+            },
+            sentinel: header.sentinel,
+            writeout: 0,
+            goalsbyte: header.readbytes,
+            shift: 64 - header.sentinel as u8,
         }
     }
 }

@@ -12,9 +12,11 @@ env_logger = "0.7.1"
 mimalloc = {version = "0.1.17", default-features = false}
 rand = "0.7.3"
 succinct = { git = "https://github.com/sujayakar/succinct-rs", branch = "rsdict" }
+serde = { version = "1.0.*", features = ["derive"] }
+bincode = "1.2.*"
 
 [dev-dependencies]
-criterion = "0.3.1"
+criterion = "0.3.*"
 
 [[bench]]
 name = "benchmarks"

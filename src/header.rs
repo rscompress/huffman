@@ -28,6 +28,11 @@ impl<'a, W: Write, M: Model> From<Encoder<'a, W, M>> for Header {
     }
 }
 
+/// TODO Add meta information to the file:
+/// - 4 byte magic
+/// - 4 byte header size
+/// - x byte header
+/// - x byte data
 impl Header {
     pub fn to_binary(&self) -> Vec<u8> {
         let result = serialize(&self).unwrap();

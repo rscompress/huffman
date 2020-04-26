@@ -22,3 +22,17 @@ pub mod header;
 pub mod huffman;
 pub mod model;
 pub mod stats;
+
+// TODO Implementation
+pub fn compress(source: &str, destination: &str) {
+    unimplemented!()
+}
+
+// TODO Implementation
+pub fn decompress(source: &str, destination: &str) {
+    unimplemented!()
+}
+
+pub fn compress_with_header_information(source: &str, destination: &str) {
+    unimplemented!()
+}

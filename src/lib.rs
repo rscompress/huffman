@@ -34,6 +34,7 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     info!("Output: {}", &destination);
     // Create reader object
     let sfile = File::open(source).expect("Failed to open source file");
+    let filesize = std::fs::metadata(source).expect("Can not read filesize").len();
     let mut reader = BufReader::with_capacity(BUF, sfile);
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) }
@@ -54,7 +55,10 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
 
     // Write header
     // TODO The header write can also be done in the encoder
-    let header = header::Header::from(&writer).to_binary();
+    let mut h = header::Header::from(&writer);
+    h.update_readbytes(filesize);
+    info!("Header: {:?}", h);
+    let header = h.to_binary();
     let header_length = u64_to_bytes(header.len() as u64);
     writer.plain_write(writer.magic().as_slice()).expect("Could not write magic");
     writer.plain_write(&header_length).expect("Could not write header length");

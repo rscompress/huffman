@@ -46,6 +46,13 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             writeout: 0,
         }
     }
+    // Define magic bytes for encoder
+    pub fn magic(&self) -> Vec<u8> {
+        "pzhf".as_bytes().to_vec()
+    }
+    pub fn plain_write(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        self.inner.write_all(bytes)
+    }
 }
 
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {

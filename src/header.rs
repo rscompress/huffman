@@ -8,6 +8,7 @@ use log::debug;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Header {
+    pub magic: Vec<u8>,
     pub btree: BTreeMap<usize, (u8, u8)>,
     pub sentinel: usize,
     pub readbytes: usize,
@@ -18,9 +19,10 @@ use crate::model::Model;
 use std::convert::From;
 use std::io::Write;
 
-impl<'a, W: Write, M: Model> From<Encoder<'a, W, M>> for Header {
-    fn from(enc: Encoder<'a, W, M>) -> Self {
+impl<'a, W: Write, M: Model> From<&Encoder<'a, W, M>> for Header {
+    fn from(enc: &Encoder<'a, W, M>) -> Self {
         Header {
+            magic: enc.magic(),
             btree: enc.model.to_btreemap(),
             sentinel: enc.model.sentinel(),
             readbytes: enc.readbytes,
@@ -30,7 +32,7 @@ impl<'a, W: Write, M: Model> From<Encoder<'a, W, M>> for Header {
 
 /// TODO Add meta information to the file:
 /// - 4 byte magic
-/// - 4 byte header size
+/// - 8 byte header size
 /// - x byte header
 /// - x byte data
 impl Header {
@@ -41,12 +43,6 @@ impl Header {
     }
     pub fn from_binary(vec: &[u8]) -> Self {
         deserialize(vec).unwrap()
-    }
-    pub fn to_file(&self, filename: &str) {
-        unimplemented!();
-    }
-    pub fn from_file(filename: &str) -> Self {
-        unimplemented!()
     }
 }
 
@@ -70,7 +66,7 @@ mod tests {
         let h = Huffman::new(codewords, length);
         let enc = Encoder::new(Cursor::new(Vec::new()), &h);
 
-        let head = Header::from(enc);
+        let head = Header::from(&enc);
         let temp = head.to_binary();
         let new_head = Header::from_binary(&temp);
 

@@ -33,6 +33,7 @@ pub struct Encoder<'a, W: Write, M: Model> {
     pub writeout: usize,
 }
 
+// TODO: Let readbytes be externally defined and a u64 since Readbytes must be set before encoding, since it is needed for header
 impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     /// Generate a new Encoder instance
     pub fn new(writer: W, model: &'a M) -> Self {

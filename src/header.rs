@@ -2,9 +2,9 @@
 //! The header file are information needed to concstruct a proper Decoder.
 //! The decoder can then be created using the `from_header` method.
 use bincode::{deserialize, serialize};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use log::debug;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Header {
@@ -38,20 +38,23 @@ impl<'a, W: Write, M: Model> From<&Encoder<'a, W, M>> for Header {
 impl Header {
     pub fn to_binary(&self) -> Vec<u8> {
         let result = serialize(&self).unwrap();
-        debug!("Header serialisation size: {} bytes", result.len());
+        info!("Header serialisation size: {} bytes", result.len());
         result
     }
     pub fn from_binary(vec: &[u8]) -> Self {
         deserialize(vec).unwrap()
     }
+    pub fn update_readbytes(&mut self, bytes: u64) {
+        self.readbytes = bytes as usize
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::encode::{calculate_length, Encoder};
     use crate::huffman::Huffman;
-    use std::io::{Cursor};
-    use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn serialisation_roundtrip() {

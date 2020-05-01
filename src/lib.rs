@@ -60,9 +60,15 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     info!("Header: {:?}", h);
     let header = h.to_binary();
     let header_length = u64_to_bytes(header.len() as u64);
-    writer.plain_write(writer.magic().as_slice()).expect("Could not write magic");
-    writer.plain_write(&header_length).expect("Could not write header length");
-    writer.plain_write(header.as_slice()).expect("Could not write header");
+    writer
+        .plain_write(&writer.magic())
+        .expect("Could not write magic");
+    writer
+        .plain_write(&header_length)
+        .expect("Could not write header length");
+    writer
+        .plain_write(&header)
+        .expect("Could not write header");
 
     //Compress file
     loop {
@@ -79,7 +85,7 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     info!("End compression")
 }
 
-fn u64_to_bytes(num: u64) -> [u8;8] {
+fn u64_to_bytes(num: u64) -> [u8; 8] {
     [
         (num >> 56) as u8,
         (num >> 48) as u8,
@@ -107,38 +113,40 @@ mod tests {
 
     #[test]
     fn test_u64_to_bytes() {
-        let input: Vec<u64> = vec![341,1,32425,23534134,3234159383273,534457654,8273839836383];
-        let mut expected: Vec<[u8;8]> = Vec::new();
-        expected.push(
-            [0, 0, 0, 0, 0, 0, 1, 85]
-        );
-        expected.push(
-            [0, 0, 0, 0, 0, 0, 0, 1]
-        );
-        expected.push(
-            [0, 0, 0, 0, 0, 0, 126, 169]
-        );
-        expected.push(
-            [0, 0, 0, 0, 1, 103, 26, 54]
-        );
-        expected.push(
-            [0, 0, 2, 241, 2, 235, 210, 233]
-        );
-        expected.push(
-            [0, 0, 0, 0, 31, 219, 45, 54]
-        );
-        expected.push(
-            [0, 0, 7, 134, 103, 72, 204, 223]
-        );
+        let input: Vec<u64> = vec![
+            341,
+            1,
+            32425,
+            23534134,
+            3234159383273,
+            534457654,
+            8273839836383,
+        ];
+        let mut expected: Vec<[u8; 8]> = Vec::new();
+        expected.push([0, 0, 0, 0, 0, 0, 1, 85]);
+        expected.push([0, 0, 0, 0, 0, 0, 0, 1]);
+        expected.push([0, 0, 0, 0, 0, 0, 126, 169]);
+        expected.push([0, 0, 0, 0, 1, 103, 26, 54]);
+        expected.push([0, 0, 2, 241, 2, 235, 210, 233]);
+        expected.push([0, 0, 0, 0, 31, 219, 45, 54]);
+        expected.push([0, 0, 7, 134, 103, 72, 204, 223]);
 
-        for (num,expected) in input.into_iter().zip(expected.into_iter()) {
+        for (num, expected) in input.into_iter().zip(expected.into_iter()) {
             assert_eq!(expected, u64_to_bytes(num))
         }
     }
 
     #[test]
     fn test_u64_to_bytes_roundtrip() {
-        let input: Vec<u64> = vec![341,1,32425,23534134,3234159383273,534457654,8273839836383];
+        let input: Vec<u64> = vec![
+            341,
+            1,
+            32425,
+            23534134,
+            3234159383273,
+            534457654,
+            8273839836383,
+        ];
         for num in input {
             let bytes = u64_to_bytes(num);
             let reverse = bytes_to_u64(&bytes);

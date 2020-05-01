@@ -23,16 +23,71 @@ pub mod huffman;
 pub mod model;
 pub mod stats;
 
-// TODO Implementation
-pub fn compress(source: &str, destination: &str) {
-    unimplemented!()
+
+fn u64_to_bytes(num: u64) -> [u8;8] {
+    [
+        (num >> 56) as u8,
+        (num >> 48) as u8,
+        (num >> 40) as u8,
+        (num >> 32) as u8,
+        (num >> 24) as u8,
+        (num >> 16) as u8,
+        (num >> 08) as u8,
+        (num & 0xFF) as u8,
+    ]
 }
 
-// TODO Implementation
-pub fn decompress(source: &str, destination: &str) {
-    unimplemented!()
+fn bytes_to_u64(bytes: &[u8]) -> u64 {
+    assert_eq!(bytes.len(), 8);
+    let mut result = 0u64;
+    for (i, byte) in bytes.iter().enumerate() {
+        result += (*byte as u64) << (56 - i * 8);
+    }
+    result
 }
 
-pub fn compress_with_header_information(source: &str, destination: &str) {
-    unimplemented!()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_u64_to_bytes() {
+        let input: Vec<u64> = vec![341,1,32425,23534134,3234159383273,534457654,8273839836383];
+        let mut expected: Vec<[u8;8]> = Vec::new();
+        expected.push(
+            [0, 0, 0, 0, 0, 0, 1, 85]
+        );
+        expected.push(
+            [0, 0, 0, 0, 0, 0, 0, 1]
+        );
+        expected.push(
+            [0, 0, 0, 0, 0, 0, 126, 169]
+        );
+        expected.push(
+            [0, 0, 0, 0, 1, 103, 26, 54]
+        );
+        expected.push(
+            [0, 0, 2, 241, 2, 235, 210, 233]
+        );
+        expected.push(
+            [0, 0, 0, 0, 31, 219, 45, 54]
+        );
+        expected.push(
+            [0, 0, 7, 134, 103, 72, 204, 223]
+        );
+
+        for (num,expected) in input.into_iter().zip(expected.into_iter()) {
+            assert_eq!(expected, u64_to_bytes(num))
+        }
+    }
+
+    #[test]
+    fn test_u64_to_bytes_roundtrip() {
+        let input: Vec<u64> = vec![341,1,32425,23534134,3234159383273,534457654,8273839836383];
+        for num in input {
+            let bytes = u64_to_bytes(num);
+            let reverse = bytes_to_u64(&bytes);
+            assert_eq!(num, reverse)
+        }
+    }
 }

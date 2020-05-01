@@ -13,8 +13,22 @@ use env_logger; // trace < debug < info < warn < error < off
 use log::{info, log_enabled};
 
 /// Main function (duh!)
+
 fn main() {
     env_logger::init();
+    let source = env::args().nth(1).expect("No source file found!");
+    let destination = env::args().nth(2).expect("No destination file found");
+    let method = env::args().nth(3).expect("No method found");
+    if method == "h".to_string() {
+        info!("Huffman with header information");
+        rscompress_huffman::stream_compress_with_header_information(&source, &destination)
+    } else {
+        info!("Huffman without header information");
+        old_main();
+    }
+}
+
+fn old_main() {
     let source = env::args().nth(1).expect("No source file found!");
     let destination = env::args().nth(2).expect("No destination file found");
     info!("Starting compression");

@@ -12,6 +12,11 @@
 //! described in the above paper. A second traversal of file then encodes each
 //! byte and saves it on disk.
 
+use log::info;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::{BufReader, BufWriter};
+
 //#[global_allocator]
 //static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -23,6 +28,52 @@ pub mod huffman;
 pub mod model;
 pub mod stats;
 
+pub fn stream_compress_with_header_information(source: &str, destination: &str) {
+    info!("Starting compression");
+    info!("Input:  {}", &source);
+    info!("Output: {}", &destination);
+    // Create reader object
+    let sfile = File::open(source).expect("Failed to open source file");
+    let mut reader = BufReader::with_capacity(BUF, sfile);
+    let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
+    unsafe { buffer.set_len(BUF) }
+
+    // Create writer object
+    let dfile = File::create(destination).expect("Failed to create destination file");
+    let w = BufWriter::with_capacity(BUF, dfile);
+
+    // Create encoder
+    let h = huffman::Huffman::from_reader(&mut reader);
+    let mut writer = encode::Encoder::new(w, &h);
+
+    // Reset reader
+    // TODO The reset can also be done in the encoder
+    reader
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("Can not move to start of file");
+
+    // Write header
+    // TODO The header write can also be done in the encoder
+    let header = header::Header::from(&writer).to_binary();
+    let header_length = u64_to_bytes(header.len() as u64);
+    writer.plain_write(writer.magic().as_slice()).expect("Could not write magic");
+    writer.plain_write(&header_length).expect("Could not write header length");
+    writer.plain_write(header.as_slice()).expect("Could not write header");
+
+    //Compress file
+    loop {
+        let read_size = reader.read(&mut buffer);
+        match read_size {
+            Ok(0) => break, // fully read file
+            Ok(n) => writer
+                .write(&buffer[..n])
+                .expect("Could not write buffer to destination"),
+            Err(err) => panic!("Problem with reading source file: {:?}", err),
+        };
+    }
+    writer.flush().expect("Could not flush file to disk!");
+    info!("End compression")
+}
 
 fn u64_to_bytes(num: u64) -> [u8;8] {
     [

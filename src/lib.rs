@@ -28,6 +28,61 @@ pub mod huffman;
 pub mod model;
 pub mod stats;
 
+#[allow(unused_variables)]
+pub fn stream_decompress_with_header_information(source: &str, destination: &str) {
+    info!("Starting decompression");
+    info!("Input:  {}", &source);
+    info!("Output: {}", &destination);
+
+    // Create reader object
+    let sfile = File::open(source).expect("Failed to open source file");
+    let mut reader = BufReader::with_capacity(BUF, sfile);
+    let filesize = std::fs::metadata(source).expect("Can not read filesize").len();
+
+    // Check header magic
+    let mut magic = [0u8; 4];
+    reader
+        .read_exact(&mut magic)
+        .expect("Error while reading magic bytes");
+    assert_eq!(magic.to_vec(), "pzhf".as_bytes().to_vec());
+
+    // Get header
+    let mut header_length = [0u8; 8];
+    reader
+        .read_exact(&mut header_length)
+        .expect("Error while reading header length");
+    let length = bytes_to_u64(&header_length);
+    info!("Header length is {}", length);
+    let mut header_raw: Vec<u8> = vec![0; length as usize];
+    reader
+        .read_exact(&mut header_raw)
+        .expect("Error while reading header");
+
+    // Get Decoder
+    let h = header::Header::from_binary(&header_raw);
+    let mut decoder = decode::Decoder::from_header(h, reader);
+
+    // Create writer object
+    let dfile = File::create(destination).expect("Failed to create destination file");
+    let mut writer = BufWriter::with_capacity(BUF, dfile);
+
+    let mut buffer: Vec<u8> = vec![0; BUF];
+    unsafe { buffer.set_len(BUF) };
+    // Decompress file
+    loop {
+        let read_size = decoder.read(&mut buffer);
+        match read_size {
+            Ok(0) => break, // fully read file
+            Ok(n) => writer
+                .write(&buffer[..n])
+                .expect("Could not write buffer to destination"),
+            Err(err) => panic!("Problem with reading source file: {:?}", err),
+        };
+    }
+    writer.flush().expect("Could not flush file to disk!");
+    info!("End decompression")
+}
+
 pub fn stream_compress_with_header_information(source: &str, destination: &str) {
     info!("Starting compression");
     info!("Input:  {}", &source);

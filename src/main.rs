@@ -19,9 +19,18 @@ fn main() {
     let source = env::args().nth(1).expect("No source file found!");
     let destination = env::args().nth(2).expect("No destination file found");
     let method = env::args().nth(3).expect("No method found");
+    let operation = env::args().nth(4).expect("No operation defined");
     if method == "h".to_string() {
         info!("Huffman with header information");
-        rscompress_huffman::stream_compress_with_header_information(&source, &destination)
+        if operation == "c" {
+            info!("Compressing file ... ");
+            rscompress_huffman::stream_compress_with_header_information(&source, &destination)
+        } else if operation == "d" {
+            info!("Decompressing file ... ");
+            rscompress_huffman::stream_decompress_with_header_information(&source, &destination)
+        } else {
+            panic!("Do not understand operation")
+        }
     } else {
         info!("Huffman without header information");
         old_main();

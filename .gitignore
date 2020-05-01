@@ -1,3 +1,4 @@
+/testdata
 /target
 Cargo.lock
 **.tmp

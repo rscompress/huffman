@@ -50,15 +50,24 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(val) = self.data.next() {
-            print!("{:64b}", self.buffer);
-            self.vault += (val as u64) << (64 - self.vaultstatus);
+            // move value to vault
+            self.vault += (val as u64) << (64 - self.vaultstatus - 8);
+            self.vaultstatus += 8;
+
+            // decode word
             let lookup_value = self.buffer >> (64 - self.sentinel);
             let (cut, sym) = get_cut_and_symbol(lookup_value);
+            assert!(cut as u64 <= self.vaultstatus);
 
+            // fill buffer from vault
             self.buffer <<= cut;
             self.buffer += self.vault >> (64 - cut);
-            self.vaultstatus += 8;
+
+            // update vault
+            self.vault <<= cut;
             self.vaultstatus -= cut as u64;
+            assert!(self.vaultstatus < 64);
+
             return Some(sym)
         }
         self.consume_buffer()

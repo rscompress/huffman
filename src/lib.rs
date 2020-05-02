@@ -27,7 +27,11 @@ pub mod header;
 pub mod huffman;
 pub mod model;
 pub mod stats;
+pub mod vault;
 
+pub fn stream_decompress_with_header_information(source: &str, destination: &str) {
+    unimplemented!()
+}
 pub fn stream_compress_with_header_information(source: &str, destination: &str) {
     info!("Starting compression");
     info!("Input:  {}", &source);

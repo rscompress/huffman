@@ -7,6 +7,6 @@ fn main() {
     let decoder = vault::Decoder::new(data.into_iter(), 5);
     println!("{:?}", decoder);
     for value in decoder {
-        println!("{}", value)
+        println!(" {}", value)
     }
 }

@@ -1,8 +1,8 @@
 //! New decoding method for Huffman encoded data
 
-use std::collections::LinkedList;
 use log::debug;
 use rand::Rng;
+use std::collections::LinkedList;
 
 #[derive(Debug)]
 pub struct Decoder<I> {
@@ -25,7 +25,7 @@ fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
     result += (iter.next().unwrap() as u64) << 32;
     result += (iter.next().unwrap() as u64) << 24;
     result += (iter.next().unwrap() as u64) << 16;
-    result += (iter.next().unwrap() as u64) <<  8;
+    result += (iter.next().unwrap() as u64) << 8;
     result += iter.next().unwrap() as u64;
     result
 }
@@ -50,7 +50,7 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             data: iter,
             _vaultstatus: 0,
             _bufferstatus: 64, // TODO Should be related to actual buffer
-            vault : 0,
+            vault: 0,
             sentinel: initiate_sentinel(sentinel),
             _reserve: initiate_reserve(),
             remaining_outputbytes: output_bytes,
@@ -60,9 +60,12 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
     fn consume_buffer(&mut self) -> Option<u8> {
-        debug!("Consuming b{:064b} v{:064b} {} {}", self.buffer, self.vault, self._vaultstatus, self._bufferstatus);
+        debug!(
+            "Consuming b{:064b} v{:064b} {} {}",
+            self.buffer, self.vault, self._vaultstatus, self._bufferstatus
+        );
         if self.sentinel > self._bufferstatus {
-            return None
+            return None;
         }
         let lookup_value = self.buffer >> (64 - self.sentinel);
         let (cut, sym) = self.get_cut_and_symbol(lookup_value);
@@ -72,7 +75,7 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             self.buffer += self.vault >> (64 - cut);
             self.vault <<= cut;
             self._vaultstatus -= cut as u64;
-            return Some(sym)
+            return Some(sym);
         } else if self._vaultstatus > 0 {
             // TODO Same as above might be just to a min(cut,vault)
             self.buffer <<= cut;
@@ -80,11 +83,11 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             self._bufferstatus -= cut as u64 - self._vaultstatus;
             self.vault <<= self._vaultstatus;
             self._vaultstatus -= self._vaultstatus;
-            return Some(sym)
+            return Some(sym);
         } else {
             self.buffer <<= cut;
             self._bufferstatus -= cut as u64;
-            return Some(sym)
+            return Some(sym);
         }
     }
     fn empty_vault(&mut self) {
@@ -113,11 +116,14 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining_outputbytes == 0 {
-            return None
+            return None;
         }
         if let Some(val) = self.data.next() {
             // Inner data source still not empty
-            debug!("Buffer {:064b} Read byte {:08b} {:?}", self.buffer, val, self._reserve);
+            debug!(
+                "Buffer {:064b} Read byte {:08b} {:?}",
+                self.buffer, val, self._reserve
+            );
 
             // Check vault fill
             if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
@@ -149,7 +155,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
                     self._reserve.push_back(sym);
                     self.remaining_outputbytes -= 1;
                     return Some(from_reserve);
-                },
+                }
                 None => {
                     self.remaining_outputbytes -= 1;
                     return Some(sym);
@@ -157,8 +163,8 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             }
         } else if let Some(reserve) = self._reserve.pop_front() {
             // Inner data source empty. First output reserve
-                    self.remaining_outputbytes -= 1;
-                    return Some(reserve)
+            self.remaining_outputbytes -= 1;
+            return Some(reserve);
         } else {
             // Finish output by consuming buffer
             self.remaining_outputbytes -= 1;

@@ -1,5 +1,8 @@
 //! New decoding method for Huffman encoded data
 
+use std::collections::LinkedList;
+use log::debug;
+
 #[derive(Debug)]
 pub struct Decoder<I> {
     data: I,
@@ -7,6 +10,7 @@ pub struct Decoder<I> {
     vaultstatus: u64,
     vault: u64,
     sentinel: u64,
+    _reserve: LinkedList<u8>,
 }
 
 fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
@@ -27,6 +31,13 @@ fn initiate_sentinel(sentinel: u64) -> u64 {
     sentinel
 }
 
+fn initiate_reserve() -> LinkedList<u8> {
+    LinkedList::<u8>::new()
+    // let mut list = LinkedList::<u8>::new();
+    // list.push_front(3);
+    // list
+}
+
 impl<I: Iterator<Item = u8>> Decoder<I> {
     pub fn new(mut iter: I, sentinel: u64) -> Self {
         Decoder {
@@ -35,13 +46,17 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             vaultstatus: 0,
             vault : 0,
             sentinel: initiate_sentinel(sentinel),
+            _reserve: initiate_reserve(),
         }
     }
 }
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
     fn consume_buffer(&mut self) -> Option<u8> {
-        unimplemented!()
+        unimplemented!("Can not consume the buffer? No more data?")
+    }
+    fn empty_vault(&mut self) {
+        unimplemented!("Can not rob the vault yet")
     }
 }
 
@@ -51,6 +66,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(val) = self.data.next() {
             // move value to vault
+            debug!("Buffer {:064b} Read byte {:08b}", self.buffer, val);
             self.vault += (val as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;
 
@@ -66,9 +82,20 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             // update vault
             self.vault <<= cut;
             self.vaultstatus -= cut as u64;
-            assert!(self.vaultstatus < 64);
+            if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
+                self.empty_vault();
+            };
 
-            return Some(sym)
+            // TODO Might be optimised using .or_else()
+            match self._reserve.pop_front() {
+                Some(from_reserve) => {
+                    self._reserve.push_back(sym);
+                    return Some(from_reserve);
+                },
+                None => {
+                    return Some(sym);
+                }
+            }
         }
         self.consume_buffer()
     }
@@ -79,6 +106,7 @@ use rand::Rng;
 fn get_cut_and_symbol(_val: u64) -> (usize, u8) {
     let mut rng = rand::thread_rng();
     let cut: usize = rng.gen_range(1, 8);
-    print!(" {} {}", cut, 32);
-    (cut, 32)
+    let sym: u8 =rng.gen();
+    print!(" {} {}", cut, sym);
+    (cut, sym)
 }

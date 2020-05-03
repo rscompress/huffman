@@ -67,6 +67,14 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(val) = self.data.next() {
             debug!("Buffer {:064b} Read byte {:08b}", self.buffer, val);
+
+            // Check vault fill
+            if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
+                self.empty_vault();
+            };
+
+            // TODO Starting here a lot of overlap with empty_vault()
+            // move value to vault
             self.vault += (val as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;
 
@@ -82,9 +90,6 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             // update vault
             self.vault <<= cut;
             self.vaultstatus -= cut as u64;
-            if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
-                self.empty_vault();
-            };
 
             // TODO Might be optimised using .or_else()
             match self._reserve.pop_front() {
@@ -100,13 +105,4 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             self.consume_buffer()
         }
     }
-}
-use rand::Rng;
-
-fn get_cut_and_symbol(_val: u64) -> (usize, u8) {
-    let mut rng = rand::thread_rng();
-    let cut: usize = rng.gen_range(1, 8);
-    let sym: u8 =rng.gen();
-    print!(" {} {}", cut, sym);
-    (cut, sym)
 }

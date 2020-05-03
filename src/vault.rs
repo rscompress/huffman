@@ -83,11 +83,13 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(val) = self.data.next() {
-            debug!("Buffer {:064b} Read byte {:08b}", self.buffer, val);
+            // Inner data source still not empty
+            debug!("Buffer {:064b} Read byte {:08b} {:?}", self.buffer, val, self._reserve);
 
             // Check vault fill
             if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
                 self.empty_vault();
+                debug!("Reserve {:?}", self._reserve)
             };
 
             // TODO Starting here a lot of overlap with empty_vault()
@@ -118,7 +120,11 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
                     return Some(sym);
                 }
             }
+        } else if let Some(reserve) = self._reserve.pop_front() {
+            // Inner data source empty. First output reserve
+            return Some(reserve)
         } else {
+            // Finish output by consuming buffer
             self.consume_buffer()
         }
     }

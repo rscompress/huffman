@@ -98,11 +98,10 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             self._vaultstatus -= cut as u64;
             self._reserve.push_back(sym);
         }
-        // unimplemented!("Can not rob the vault yet")
     }
     fn get_cut_and_symbol(&mut self, _val: u64) -> (usize, u8) {
         let mut rng = rand::thread_rng();
-        let cut: usize = rng.gen_range(1, 8);
+        let cut: usize = rng.gen_range(1, self.sentinel as usize);
         let sym = (self.buffer >> (64 - cut)) as u8;
         debug!("Cut {} Symbol {:b}", cut, sym);
         (cut, sym)

@@ -1,19 +1,40 @@
 //! New decoding method for Huffman encoded data
+//!
+//! # Inner workings of the `Decoder`
+//! The main elements of the `Decoder` are the `buffer`, `vault`, and
+//! `sentinel`. The first `sentinel` bits of the `buffer` are read and
+//! decoded (call to `get_cut_and_symbol()`).
+//! This decoding process returns the number of bits evaluated (`cut`)
+//! and the decoded symbol. Afterwards, the `cut` MSB from the buffer will be
+//! removed. Next, the `cut` LSB from the buffer will be filled via the `cut`
+//! MSB from the `vault`. The current symbol will be written at the end of
+//! the vault. This may cause the vault to overfill. Should the vault be
+//! close to overfilling, values from the buffer are decoded into the
+//! `_reserve`. This causes the `vault` to be emptied, since the buffer gets
+//! refilled with the `vault`.
 
 use log::debug;
-use rand::Rng;
 use std::collections::LinkedList;
+use succinct::rsdict::RsDict;
+use std::io::Write;
+use crate::model::Model;
+use crate::encode::Encoder;
+use succinct::rank::BitRankSupport;
+use crate::decode::prepare_lookup;
 
+/// The Decoder<I> struct decodes iterable data structures
 #[derive(Debug)]
 pub struct Decoder<I> {
     data: I,
     buffer: u64,
-    _vaultstatus: u64,
-    _bufferstatus: u64,
     vault: u64,
     sentinel: u64,
-    _reserve: LinkedList<u8>,
     remaining_outputbytes: u64,
+    rbv: RsDict,
+    table: Vec<(u8,u8)>,
+    _reserve: LinkedList<u8>,
+    _vaultstatus: u64,
+    _bufferstatus: u64,
 }
 
 fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
@@ -44,16 +65,25 @@ fn initiate_reserve() -> LinkedList<u8> {
 }
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
-    pub fn new(mut iter: I, sentinel: u64, output_bytes: u64) -> Self {
+    pub fn new<W: Write, M: Model>(mut iter: I, encoder: &Encoder<W,M>) -> Self {
         Decoder {
             buffer: initiate_buffer(&mut iter),
             data: iter,
             _vaultstatus: 0,
             _bufferstatus: 64, // TODO Should be related to actual buffer
             vault: 0,
-            sentinel: initiate_sentinel(sentinel),
+            sentinel: initiate_sentinel(encoder.model.sentinel() as u64),
             _reserve: initiate_reserve(),
-            remaining_outputbytes: output_bytes,
+            remaining_outputbytes: encoder.readbytes as u64,
+            // TODO Move rbv and table into own struct and trait for better overview
+            rbv: {
+                let (_, v) = prepare_lookup(&encoder.model.to_btreemap());
+                v
+            },
+            table: {
+                let (t, _) = prepare_lookup(&encoder.model.to_btreemap());
+                t
+            },
         }
     }
 }
@@ -102,12 +132,11 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             self._reserve.push_back(sym);
         }
     }
-    fn get_cut_and_symbol(&mut self, _val: u64) -> (usize, u8) {
-        let mut rng = rand::thread_rng();
-        let cut: usize = rng.gen_range(1, self.sentinel as usize);
-        let sym = (self.buffer >> (64 - cut)) as u8;
-        debug!("Cut {} Symbol {:b}", cut, sym);
-        (cut, sym)
+    fn get_cut_and_symbol(&mut self, val: u64) -> (usize, u8) {
+        let pos = self.rbv.rank1(val + 1) as usize - 1;
+        let (sym, length) = self.table[pos];
+        debug!("Cut {} Symbol {:b}", length, sym);
+        (length as usize, sym)
     }
 }
 

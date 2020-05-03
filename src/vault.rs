@@ -2,6 +2,7 @@
 
 use std::collections::LinkedList;
 use log::debug;
+use rand::Rng;
 
 #[derive(Debug)]
 pub struct Decoder<I> {
@@ -64,8 +65,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(val) = self.data.next() {
-            // move value to vault
+        if let Some(val) = self.data.next() {
             debug!("Buffer {:064b} Read byte {:08b}", self.buffer, val);
             self.vault += (val as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;
@@ -96,11 +96,11 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
                     return Some(sym);
                 }
             }
+        } else {
+            self.consume_buffer()
         }
-        self.consume_buffer()
     }
 }
-
 use rand::Rng;
 
 fn get_cut_and_symbol(_val: u64) -> (usize, u8) {

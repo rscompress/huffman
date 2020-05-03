@@ -17,6 +17,7 @@ pub struct Decoder<I> {
 
 fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
     let mut result = 0u64;
+    // TODO Iterator must have at least 8 elements
     result += (iter.next().unwrap() as u64) << 56;
     result += (iter.next().unwrap() as u64) << 48;
     result += (iter.next().unwrap() as u64) << 40;
@@ -29,6 +30,7 @@ fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
 }
 
 fn initiate_sentinel(sentinel: u64) -> u64 {
+    // TODO Remove constraint
     assert!(sentinel <= 8);
     sentinel
 }

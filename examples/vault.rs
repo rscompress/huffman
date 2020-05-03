@@ -7,7 +7,8 @@ fn main() {
     println!("{:?}", data);
     let decoder = vault::Decoder::new(data.into_iter(), 5);
     println!("{:?}", decoder);
-    for value in decoder {
-        println!(" {}", value)
+    for value in decoder.into_iter().enumerate() {
+        println!("Iteration {}", value.0);
+        println!("Result {}", value.1);
     }
 }

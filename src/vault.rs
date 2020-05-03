@@ -12,6 +12,7 @@ pub struct Decoder<I> {
     vault: u64,
     sentinel: u64,
     _reserve: LinkedList<u8>,
+    remaining_outputbytes: u64,
 }
 
 fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
@@ -40,7 +41,7 @@ fn initiate_reserve() -> LinkedList<u8> {
 }
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
-    pub fn new(mut iter: I, sentinel: u64) -> Self {
+    pub fn new(mut iter: I, sentinel: u64, output_bytes: u64) -> Self {
         Decoder {
             buffer: initiate_buffer(&mut iter),
             data: iter,
@@ -48,6 +49,7 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             vault : 0,
             sentinel: initiate_sentinel(sentinel),
             _reserve: initiate_reserve(),
+            remaining_outputbytes: output_bytes,
         }
     }
 }
@@ -82,6 +84,9 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining_outputbytes == 0 {
+            return None
+        }
         if let Some(val) = self.data.next() {
             // Inner data source still not empty
             debug!("Buffer {:064b} Read byte {:08b} {:?}", self.buffer, val, self._reserve);
@@ -114,15 +119,18 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             match self._reserve.pop_front() {
                 Some(from_reserve) => {
                     self._reserve.push_back(sym);
+                    self.remaining_outputbytes -= 1;
                     return Some(from_reserve);
                 },
                 None => {
+                    self.remaining_outputbytes -= 1;
                     return Some(sym);
                 }
             }
         } else if let Some(reserve) = self._reserve.pop_front() {
             // Inner data source empty. First output reserve
-            return Some(reserve)
+                    self.remaining_outputbytes -= 1;
+                    return Some(reserve)
         } else {
             // Finish output by consuming buffer
             self.consume_buffer()

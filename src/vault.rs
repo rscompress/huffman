@@ -65,7 +65,7 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             self.buffer += self.vault >> (64 - cut);
             self.vault <<= cut;
             self.vaultstatus -= cut as u64;
-            self._reserve.push_front(sym);
+            self._reserve.push_back(sym);
         }
         // unimplemented!("Can not rob the vault yet")
     }

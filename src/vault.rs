@@ -8,7 +8,8 @@ use rand::Rng;
 pub struct Decoder<I> {
     data: I,
     buffer: u64,
-    vaultstatus: u64,
+    _vaultstatus: u64,
+    _bufferstatus: u64,
     vault: u64,
     sentinel: u64,
     _reserve: LinkedList<u8>,
@@ -47,7 +48,8 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
         Decoder {
             buffer: initiate_buffer(&mut iter),
             data: iter,
-            vaultstatus: 0,
+            _vaultstatus: 0,
+            _bufferstatus: 64, // TODO Should be related to actual buffer
             vault : 0,
             sentinel: initiate_sentinel(sentinel),
             _reserve: initiate_reserve(),
@@ -64,11 +66,11 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
         while self.vault & 0x00FF_FFFF_FFFF_FFFF > 0 {
             let lookup_value = self.buffer >> (64 - self.sentinel);
             let (cut, sym) = self.get_cut_and_symbol(lookup_value);
-            assert!(cut as u64 <= self.vaultstatus);
+            assert!(cut as u64 <= self._vaultstatus);
             self.buffer <<= cut;
             self.buffer += self.vault >> (64 - cut);
             self.vault <<= cut;
-            self.vaultstatus -= cut as u64;
+            self._vaultstatus -= cut as u64;
             self._reserve.push_back(sym);
         }
         // unimplemented!("Can not rob the vault yet")
@@ -101,13 +103,13 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
             // TODO Starting here a lot of overlap with empty_vault()
             // move value to vault
-            self.vault += (val as u64) << (64 - self.vaultstatus - 8);
-            self.vaultstatus += 8;
+            self.vault += (val as u64) << (64 - self._vaultstatus - 8);
+            self._vaultstatus += 8;
 
             // decode word
             let lookup_value = self.buffer >> (64 - self.sentinel);
             let (cut, sym) = self.get_cut_and_symbol(lookup_value);
-            assert!(cut as u64 <= self.vaultstatus);
+            assert!(cut as u64 <= self._vaultstatus);
 
             // fill buffer from vault
             self.buffer <<= cut;
@@ -115,7 +117,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
             // update vault
             self.vault <<= cut;
-            self.vaultstatus -= cut as u64;
+            self._vaultstatus -= cut as u64;
 
             // TODO Might be optimised using .or_else()
             match self._reserve.pop_front() {

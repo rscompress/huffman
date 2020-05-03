@@ -60,7 +60,32 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
     fn consume_buffer(&mut self) -> Option<u8> {
-        unimplemented!("Can not consume the buffer? No more data?")
+        debug!("Consuming b{:064b} v{:064b} {} {}", self.buffer, self.vault, self._vaultstatus, self._bufferstatus);
+        if self.sentinel > self._bufferstatus {
+            return None
+        }
+        let lookup_value = self.buffer >> (64 - self.sentinel);
+        let (cut, sym) = self.get_cut_and_symbol(lookup_value);
+        if cut <= self._vaultstatus as usize {
+            // normal process
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - cut);
+            self.vault <<= cut;
+            self._vaultstatus -= cut as u64;
+            return Some(sym)
+        } else if self._vaultstatus > 0 {
+            // TODO Same as above might be just to a min(cut,vault)
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - self._vaultstatus);
+            self._bufferstatus -= cut as u64 - self._vaultstatus;
+            self.vault <<= self._vaultstatus;
+            self._vaultstatus -= self._vaultstatus;
+            return Some(sym)
+        } else {
+            self.buffer <<= cut;
+            self._bufferstatus -= cut as u64;
+            return Some(sym)
+        }
     }
     fn empty_vault(&mut self) {
         while self.vault & 0x00FF_FFFF_FFFF_FFFF > 0 {
@@ -137,6 +162,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
                     return Some(reserve)
         } else {
             // Finish output by consuming buffer
+            self.remaining_outputbytes -= 1;
             self.consume_buffer()
         }
     }

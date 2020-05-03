@@ -57,7 +57,24 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
         unimplemented!("Can not consume the buffer? No more data?")
     }
     fn empty_vault(&mut self) {
-        unimplemented!("Can not rob the vault yet")
+        while self.vault & 0x00FF_FFFF_FFFF_FFFF > 0 {
+            let lookup_value = self.buffer >> (64 - self.sentinel);
+            let (cut, sym) = self.get_cut_and_symbol(lookup_value);
+            assert!(cut as u64 <= self.vaultstatus);
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - cut);
+            self.vault <<= cut;
+            self.vaultstatus -= cut as u64;
+            self._reserve.push_front(sym);
+        }
+        // unimplemented!("Can not rob the vault yet")
+    }
+    fn get_cut_and_symbol(&mut self, _val: u64) -> (usize, u8) {
+        let mut rng = rand::thread_rng();
+        let cut: usize = rng.gen_range(1, 8);
+        let sym = (self.buffer >> (64 - cut)) as u8;
+        debug!("Cut {} Symbol {:b}", cut, sym);
+        (cut, sym)
     }
 }
 
@@ -80,7 +97,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
             // decode word
             let lookup_value = self.buffer >> (64 - self.sentinel);
-            let (cut, sym) = get_cut_and_symbol(lookup_value);
+            let (cut, sym) = self.get_cut_and_symbol(lookup_value);
             assert!(cut as u64 <= self.vaultstatus);
 
             // fill buffer from vault

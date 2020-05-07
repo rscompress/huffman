@@ -16,7 +16,7 @@ fn main() {
     // }
 
 
-    let data = "What a lovely text this is. This is a love poem.".as_bytes().to_vec();
+    let data = "What a lovely.".as_bytes().to_vec();
     let mut codewords = [0usize; 256];
     let mut length = [0usize; 256];
     for word in data.iter() {
@@ -32,7 +32,7 @@ fn main() {
     println!("{:?}", encoded_data);
     println!("{:?}", data);
 
-    let decoder = Decoder::new(encoded_data.into_iter(), &enc);
+    let decoder = Decoder::new(encoded_data.into_iter(), &h, data.len() as u64);
     let decoded_data: Vec<u8> = decoder.collect();
     println!("{:?}", decoded_data);
 }

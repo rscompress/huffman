@@ -65,23 +65,23 @@ fn initiate_reserve() -> LinkedList<u8> {
 }
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
-    pub fn new<W: Write, M: Model>(mut iter: I, encoder: &Encoder<W,M>) -> Self {
+    pub fn new<M: Model>(mut iter: I, model: &M, output: u64) -> Self {
         Decoder {
             buffer: initiate_buffer(&mut iter),
             data: iter,
             _vaultstatus: 0,
             _bufferstatus: 64, // TODO Should be related to actual buffer
             vault: 0,
-            sentinel: initiate_sentinel(encoder.model.sentinel() as u64),
+            sentinel: initiate_sentinel(model.sentinel() as u64),
             _reserve: initiate_reserve(),
-            remaining_outputbytes: encoder.readbytes as u64,
+            remaining_outputbytes: output,
             // TODO Move rbv and table into own struct and trait for better overview
             rbv: {
-                let (_, v) = prepare_lookup(&encoder.model.to_btreemap());
+                let (_, v) = prepare_lookup(&model.to_btreemap());
                 v
             },
             table: {
-                let (t, _) = prepare_lookup(&encoder.model.to_btreemap());
+                let (t, _) = prepare_lookup(&model.to_btreemap());
                 t
             },
         }

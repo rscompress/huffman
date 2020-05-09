@@ -35,18 +35,19 @@ pub struct Decoder<I> {
     _bufferstatus: u64,
 }
 
-fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> u64 {
+fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> (u64, u64) {
     let mut result = 0u64;
-    // TODO Iterator must have at least 8 elements
-    result += (iter.next().unwrap() as u64) << 56;
-    result += (iter.next().unwrap() as u64) << 48;
-    result += (iter.next().unwrap() as u64) << 40;
-    result += (iter.next().unwrap() as u64) << 32;
-    result += (iter.next().unwrap() as u64) << 24;
-    result += (iter.next().unwrap() as u64) << 16;
-    result += (iter.next().unwrap() as u64) << 8;
-    result += iter.next().unwrap() as u64;
-    result
+    let mut used = 0u64;
+
+    while used < 64 {
+        if let Some(value) = iter.next() {
+            result += (value as u64) << (56 - used);
+            used += 8;
+        } else {
+            break
+        }
+    }
+    (result, used)
 }
 
 fn initiate_sentinel(sentinel: u64) -> u64 {
@@ -57,18 +58,16 @@ fn initiate_sentinel(sentinel: u64) -> u64 {
 
 fn initiate_reserve() -> LinkedList<u8> {
     LinkedList::<u8>::new()
-    // let mut list = LinkedList::<u8>::new();
-    // list.push_front(3);
-    // list
 }
 
 impl<I: Iterator<Item = u8>> Decoder<I> {
     pub fn new<M: Model>(mut iter: I, model: &M, output: u64) -> Self {
+        let (buffer, bufferstatus) = initiate_buffer(&mut iter);
         Decoder {
-            buffer: initiate_buffer(&mut iter),
+            buffer: buffer,
             data: iter,
             _vaultstatus: 0,
-            _bufferstatus: 64, // TODO Should be related to actual buffer
+            _bufferstatus: bufferstatus,
             vault: 0,
             sentinel: initiate_sentinel(model.sentinel() as u64),
             _reserve: initiate_reserve(),

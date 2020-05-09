@@ -92,11 +92,11 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             "Consuming b{:064b} v{:064b} {} {}",
             self.buffer, self.vault, self._vaultstatus, self._bufferstatus
         );
-        if self.sentinel > self._bufferstatus {
-            return None;
-        }
         let lookup_value = self.buffer >> (64 - self.sentinel);
         let (cut, sym) = self.get_cut_and_symbol(lookup_value);
+        if cut as u64 > self._bufferstatus {
+            return None;
+        }
         if cut <= self._vaultstatus as usize {
             // normal process
             self.buffer <<= cut;

@@ -83,9 +83,6 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
             },
         }
     }
-}
-
-impl<I: Iterator<Item = u8>> Decoder<I> {
     fn consume_buffer(&mut self) -> Option<u8> {
         debug!(
             "Consuming b{:064b} v{:064b} {} {}",

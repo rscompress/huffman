@@ -5,7 +5,7 @@ use std::io::{Write, Cursor};
 fn main() {
     env_logger::init();
 
-    let data = "What a lovely text we.".as_bytes().to_vec();
+    let data = "What a lovely text we have here.".as_bytes().to_vec();
     let h = Huffman::from_slice(data.as_slice());
 
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
@@ -17,7 +17,6 @@ fn main() {
     println!("{:?}", data);
 
     let decoder = Decoder::new(encoded_data.into_iter(), &h, data.len() as u64);
-    println!("{:?}", decoder);
     let decoded_data: Vec<u8> = decoder.collect();
     println!("{:?}", decoded_data);
 }

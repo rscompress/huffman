@@ -26,16 +26,13 @@ impl Model for Huffman {
     }
     fn to_btreemap(&self) -> BTreeMap<usize, (u8, u8)> {
         let mut result: BTreeMap<usize, (u8, u8)> = BTreeMap::new();
-        for (sym, &code) in self
-            .codewords
-            .iter()
-            .enumerate()
-            .filter(|(ix, _)| self.length[*ix as usize] != 0)
-        {
-            result.insert(
-                code << (self.sentinel() - self.length[sym]),
-                (sym as u8, self.length[sym] as u8),
-            );
+        for (ix, &k) in self.length.iter().enumerate() {
+            if k != 0 {
+                let codeword = self.codewords[ix] << (self.sentinel() - k);
+                let val = (ix as u8, k as u8);
+                debug!("DecodeTable: {} {}", self.codewords[ix], k);
+                result.insert(codeword, val);
+            }
         }
         result
     }
@@ -155,6 +152,7 @@ pub fn extract_values(store: &[(usize, usize)]) -> Vec<usize> {
 
 pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Vec<usize>) {
     let max_wordlen = lengths[lengths.len() - 1];
+    debug!("Max word length: {}", 1 << max_wordlen);
     let mut li_small_codes: Vec<usize> = vec![0usize; lengths.len()];
     let mut li_big_codes: Vec<usize> = vec![0usize; lengths.len()];
     unsafe {
@@ -170,8 +168,6 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
     (li_small_codes, li_big_codes)
 }
 
-use crate::huffman::encode::calculate_length;
-
 /// Generate extended codewords from a histogram.
 ///
 /// # Steps
@@ -185,17 +181,21 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], [usize
     let sorted_tuple = sort_by_value(&histogram);
     let mut weights = extract_values(&sorted_tuple);
     calculate_codeword_length_inplace(&mut weights);
+    debug!("Lengths {:?}", weights);
     let (codes, _) = calculate_codewords_based_on_length(&weights);
+    debug!("  Codes {:?}", codes);
+    debug!(" Stuple {:?}", sorted_tuple);
 
     let mut extended_codes = [0usize; 256];
     let mut length = [0usize; 256];
-    for (code, (key, _)) in codes.into_iter().zip(sorted_tuple.into_iter()) {
-        debug!(
-            "Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}]",
-            key, code
-        );
+    for (ix, (code, (key, _))) in codes.into_iter().zip(sorted_tuple.into_iter()).enumerate() {
         extended_codes[key as usize] = code;
-        length[key as usize] = calculate_length(code);
+        let l = weights[ix];
+        length[key as usize] = l;
+        debug!(
+            "Huffman code: {0:>8b} [{0:>3}] -> {1:b} [{1:>3}] {2}",
+            key, code, l
+        );
     }
     (extended_codes, length)
 }

@@ -54,9 +54,6 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     pub fn plain_write(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         self.inner.write_all(bytes)
     }
-}
-
-impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     fn put(&mut self) -> std::io::Result<usize> {
         let output = (self.buffer >> 56) as u8;
         let no = self.inner.write(&[output])?;

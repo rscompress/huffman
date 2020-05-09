@@ -16,9 +16,7 @@
 use log::debug;
 use std::collections::LinkedList;
 use succinct::rsdict::RsDict;
-use std::io::Write;
 use crate::model::Model;
-use crate::encode::Encoder;
 use succinct::rank::BitRankSupport;
 use crate::decode::prepare_lookup;
 
@@ -145,6 +143,11 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining_outputbytes == 0 {
+            debug!("Finished decoding");
+            debug!(
+                "Buffer {:064b} Vault {:064b}",
+                self.buffer, self.vault
+            );
             return None;
         }
         if let Some(val) = self.data.next() {

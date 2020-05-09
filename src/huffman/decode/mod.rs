@@ -138,6 +138,7 @@ impl<R: Read> Read for Decoder<R> {
 }
 
 pub fn prepare_lookup(bt: &BTreeMap<usize, (u8, u8)>) -> (Vec<(u8, u8)>, RsDict) {
+    debug!("Btree from encoder: {:?}", bt);
     let table: Vec<(u8, u8)> = bt.values().cloned().collect();
     let keys: Vec<usize> = bt.keys().cloned().collect();
     let m: usize = keys[keys.len() - 1];

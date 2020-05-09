@@ -93,7 +93,9 @@ pub fn calculate_codeword_length_inplace(histogram: &mut [usize]) {
     }
 
     // Phase 2
-    histogram[1] = 0;
+    if histogram.len() != 1 {
+        histogram[1] = 0;
+    }
     let mut next = 2;
     while next < histogram.len() {
         histogram[next] = histogram[histogram[next]] + 1;
@@ -182,6 +184,9 @@ pub fn generate_extended_codewords(histogram: &[usize]) -> ([usize; 256], [usize
     let mut weights = extract_values(&sorted_tuple);
     calculate_codeword_length_inplace(&mut weights);
     debug!("Lengths {:?}", weights);
+    if weights.len() == 1 {
+        weights[0] = 1;
+    }
     let (codes, _) = calculate_codewords_based_on_length(&weights);
     debug!("  Codes {:?}", codes);
     debug!(" Stuple {:?}", sorted_tuple);

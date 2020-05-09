@@ -5,7 +5,7 @@ use std::io::{Write, Cursor};
 fn main() {
     env_logger::init();
 
-    let data = "What a lovely text we have here.".as_bytes().to_vec();
+    let data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes().to_vec();
     let h = Huffman::from_slice(data.as_slice());
 
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);

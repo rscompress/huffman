@@ -16,7 +16,7 @@ fn benchmark_whole_encoding_chain(c: &mut Criterion) {
     group.throughput(Throughput::Bytes(bytes.len() as u64));
     group.bench_function("whole_chain", |b| {
         b.iter(|| {
-            let h = Huffman::from_reader(&mut bytes.as_slice());
+            let h = Huffman::from_slice(&mut bytes.as_slice());
             let mut writer = Encoder::new(Cursor::new(Vec::new()), &h);
             writer.write(bytes.as_slice())
         })
@@ -107,7 +107,7 @@ fn benchmark_encoding(c: &mut Criterion) {
     let bytes: Vec<u8> = vec![
         3, 12, 24, 222, 131, 151, 23, 141, 24, 234, 11, 1, 1, 1, 24, 242, 52, 231,
     ];
-    let h = Huffman::from_reader(&mut bytes.as_slice());
+    let h = Huffman::from_slice(&mut bytes.as_slice());
     let mut writer = Encoder::new(Cursor::new(Vec::new()), &h);
 
     let mut group = c.benchmark_group("throughput_encoding");

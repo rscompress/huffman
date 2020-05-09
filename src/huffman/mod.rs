@@ -43,8 +43,7 @@ impl Model for Huffman {
 
 use crate::stats::generate_histogram;
 use std::collections::BTreeMap;
-use std::io::Read;
-
+use std::io::{Read, Seek};
 impl Huffman {
     pub fn new(codewords: [usize; 256], length: [usize; 256]) -> Self {
         Huffman { codewords, length }
@@ -53,8 +52,18 @@ impl Huffman {
         let (codewords, length) = generate_extended_codewords(histogram);
         Huffman::new(codewords, length)
     }
-    pub fn from_reader(reader: &mut impl Read) -> Self {
+    pub fn from_reader<RS: Seek+Read>(reader: &mut RS) -> Self {
         let histogram = generate_histogram(reader);
+        reader
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("Can not move to start of file");
+        Huffman::from_histogram(&histogram)
+    }
+    pub fn from_slice(data: &[u8]) -> Self {
+        let mut histogram = [0usize; 256];
+        for value in data {
+            histogram[*value as usize] += 1
+        }
         Huffman::from_histogram(&histogram)
     }
 }

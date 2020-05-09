@@ -47,12 +47,6 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     let h = huffman::Huffman::from_reader(&mut reader);
     let mut writer = huffman::encode::Encoder::new(w, &h);
 
-    // Reset reader
-    // TODO The reset can also be done in the encoder
-    reader
-        .seek(std::io::SeekFrom::Start(0))
-        .expect("Can not move to start of file");
-
     // Write header
     // TODO The header write can also be done in the encoder
     let mut h = huffman::header::Header::from(&writer);

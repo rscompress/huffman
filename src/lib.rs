@@ -21,13 +21,9 @@ use std::io::{BufReader, BufWriter};
 //static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub const BUF: usize = 4096;
-pub mod decode;
-pub mod encode;
-pub mod header;
 pub mod huffman;
 pub mod model;
 pub mod stats;
-pub mod vault;
 
 pub fn stream_decompress_with_header_information(source: &str, destination: &str) {
     unimplemented!()
@@ -49,7 +45,7 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
 
     // Create encoder
     let h = huffman::Huffman::from_reader(&mut reader);
-    let mut writer = encode::Encoder::new(w, &h);
+    let mut writer = huffman::encode::Encoder::new(w, &h);
 
     // Reset reader
     // TODO The reset can also be done in the encoder
@@ -59,7 +55,7 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
 
     // Write header
     // TODO The header write can also be done in the encoder
-    let mut h = header::Header::from(&writer);
+    let mut h = huffman::header::Header::from(&writer);
     h.update_readbytes(filesize);
     info!("Header: {:?}", h);
     let header = h.to_binary();

@@ -1,5 +1,5 @@
-use crate::encode::Encoder;
-use crate::header::Header;
+use super::encode::Encoder;
+use super::header::Header;
 use crate::model::Model;
 use log::debug;
 use std::collections::BTreeMap;
@@ -9,6 +9,8 @@ use succinct::bit_vec::BitVecMut;
 use succinct::rank::BitRankSupport;
 use succinct::rsdict::RsDict;
 use succinct::BitVector;
+
+pub mod vault;
 
 pub struct Decoder<R: Read> {
     inner: R,
@@ -230,7 +232,7 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encode::{calculate_length, Encoder};
+    use crate::huffman::encode::{calculate_length, Encoder};
     use crate::huffman::Huffman;
     use std::io::{Cursor, Write};
 

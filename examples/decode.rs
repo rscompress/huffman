@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use log::info;
-use rscompress_huffman::decode::{read, Decoder};
-use rscompress_huffman::encode::Encoder;
+use rscompress_huffman::huffman::decode::{read, Decoder};
+use rscompress_huffman::huffman::encode::Encoder;
 use rscompress_huffman::huffman::Huffman;
 use rscompress_huffman::stats::generate_random_byte_vector;
 use std::fs::File;

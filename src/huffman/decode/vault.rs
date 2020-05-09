@@ -18,7 +18,7 @@ use std::collections::LinkedList;
 use succinct::rsdict::RsDict;
 use crate::model::Model;
 use succinct::rank::BitRankSupport;
-use crate::decode::prepare_lookup;
+use crate::huffman::decode::prepare_lookup;
 
 /// The Decoder<I> struct decodes iterable data structures
 #[derive(Debug)]

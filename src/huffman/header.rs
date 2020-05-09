@@ -14,7 +14,7 @@ pub struct Header {
     pub readbytes: usize,
 }
 
-use crate::encode::Encoder;
+use super::encode::Encoder;
 use crate::model::Model;
 use std::convert::From;
 use std::io::Write;
@@ -52,7 +52,7 @@ impl Header {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encode::{calculate_length, Encoder};
+    use crate::huffman::encode::{calculate_length, Encoder};
     use crate::huffman::Huffman;
     use std::io::Cursor;
 

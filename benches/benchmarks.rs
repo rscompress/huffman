@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use criterion::{BenchmarkId, Throughput};
-use rscompress_huffman::encode::Encoder;
+use rscompress_huffman::huffman::encode::Encoder;
 use rscompress_huffman::huffman::{generate_extended_codewords, Huffman};
 use rscompress_huffman::stats::generate_histogram;
 use std::io::prelude::*;
@@ -246,7 +246,7 @@ fn benchmark_codeoword_generation_excl5(c: &mut Criterion) {
     group.finish();
 }
 
-use rscompress_huffman::encode::calculate_length;
+use rscompress_huffman::huffman::encode::calculate_length;
 
 // Looking into codeword generation and it takes soo long
 fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
@@ -271,7 +271,7 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.finish();
 }
 
-use rscompress_huffman::decode::{read, search_key_or_next_small_key};
+use rscompress_huffman::huffman::decode::{read, search_key_or_next_small_key};
 use rscompress_huffman::model::Model;
 use std::io::Write;
 

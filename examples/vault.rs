@@ -1,6 +1,6 @@
 
-use rscompress_huffman::{vault::Decoder, encode::Encoder, huffman::Huffman};
-use rscompress_huffman::encode::calculate_length;
+use rscompress_huffman::huffman::{decode::vault::Decoder, encode::Encoder, Huffman};
+use rscompress_huffman::huffman::encode::calculate_length;
 use std::io::{Write, Cursor};
 
 fn main() {

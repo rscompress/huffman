@@ -3,6 +3,10 @@
 use crate::model::Model;
 use log::debug;
 
+pub mod decode;
+pub mod encode;
+pub mod header;
+
 pub struct Huffman {
     codewords: [usize; 256],
     length: [usize; 256],
@@ -157,7 +161,7 @@ pub fn calculate_codewords_based_on_length(lengths: &[usize]) -> (Vec<usize>, Ve
     (li_small_codes, li_big_codes)
 }
 
-use crate::encode::calculate_length;
+use crate::huffman::encode::calculate_length;
 
 /// Generate extended codewords from a histogram.
 ///

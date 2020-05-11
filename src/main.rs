@@ -13,28 +13,28 @@ use env_logger; // trace < debug < info < warn < error < off
 use log::{info, log_enabled};
 
 /// Main function (duh!)
-
 fn main() {
     env_logger::init();
     let source = env::args().nth(1).expect("No source file found!");
     let destination = env::args().nth(2).expect("No destination file found");
-    let method = env::args().nth(3).expect("No method found");
-    let operation = env::args().nth(4).expect("No operation defined");
-    if method == "h".to_string() {
-        info!("Huffman with header information");
-        if operation == "c" {
-            info!("Compressing file ... ");
-            rscompress_huffman::stream_compress_with_header_information(&source, &destination)
-        } else if operation == "d" {
-            info!("Decompressing file ... ");
-            rscompress_huffman::stream_decompress_with_header_information(&source, &destination)
-        } else {
-            panic!("Do not understand operation")
-        }
-    } else {
-        info!("Huffman without header information");
-        old_main();
-    }
+    rscompress_huffman::memory_roundtrip(&source, &destination);
+    // let method = env::args().nth(3).expect("No method found");
+    // let operation = env::args().nth(4).expect("No operation defined");
+    // if method == "h".to_string() {
+    //     info!("Huffman with header information");
+    //     if operation == "c" {
+    //         info!("Compressing file ... ");
+    //         rscompress_huffman::stream_compress_with_header_information(&source, &destination)
+    //     } else if operation == "d" {
+    //         info!("Decompressing file ... ");
+    //         rscompress_huffman::stream_decompress_with_header_information(&source, &destination)
+    //     } else {
+    //         panic!("Do not understand operation")
+    //     }
+    // } else {
+    //     info!("Huffman without header information");
+    //     old_main();
+    // }
 }
 
 fn old_main() {
@@ -47,7 +47,7 @@ fn old_main() {
     let dfile = File::create(destination).expect("Failed to create destination file");
 
     let mut reader = BufReader::with_capacity(BUF, sfile);
-    let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
+    let mut buffer: Vec<u8> = vec![0;BUF];
     unsafe { buffer.set_len(BUF) }
 
     info!("Generating histogram...");

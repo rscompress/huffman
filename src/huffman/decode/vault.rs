@@ -22,8 +22,8 @@ use crate::huffman::decode::prepare_lookup;
 
 /// The Decoder<I> struct decodes iterable data structures
 #[derive(Debug)]
-pub struct Decoder<I> {
-    data: I,
+pub struct Decoder<R> {
+    inner: R,
     buffer: u64,
     vault: u64,
     sentinel: u64,
@@ -35,19 +35,16 @@ pub struct Decoder<I> {
     _bufferstatus: u64,
 }
 
-fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> (u64, u64) {
+fn initiate_buffer<R: Read>(reader: &mut R) -> (u64, u64) {
     let mut result = 0u64;
     let mut used = 0u64;
+    let mut buf: [u8;8] = [0;8];
+    let mut nbytes = reader.read(&mut buf).expect("Cannot read");
 
-    while used < 64 {
-        if let Some(value) = iter.next() {
-            result += (value as u64) << (56 - used);
-            used += 8;
-        } else {
-            break
-        }
+    for i in 0..nbytes {
+        result += (buf[i] as u64) << (56 - i * 8)
     }
-    (result, used)
+    (result, nbytes as u64)
 }
 
 fn initiate_sentinel(sentinel: u64) -> u64 {
@@ -60,12 +57,14 @@ fn initiate_reserve() -> LinkedList<u8> {
     LinkedList::<u8>::new()
 }
 
-impl<I: Iterator<Item = u8>> Decoder<I> {
-    pub fn new<M: Model>(mut iter: I, model: &M, output: u64) -> Self {
-        let (buffer, bufferstatus) = initiate_buffer(&mut iter);
+use std::io::Read;
+
+impl<R: Read> Decoder<R> {
+    pub fn new<M: Model>(mut reader: R, model: &M, output: u64) -> Self {
+        let (buffer, bufferstatus) = initiate_buffer(&mut reader);
         Decoder {
             buffer: buffer,
-            data: iter,
+            inner: reader,
             _vaultstatus: 0,
             _bufferstatus: bufferstatus,
             vault: 0,
@@ -134,10 +133,8 @@ impl<I: Iterator<Item = u8>> Decoder<I> {
     }
 }
 
-impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<R: Read> Decoder<R> {
+    fn decode(&mut self, symbol: Option<u8>) -> Option<u8> {
         if self.remaining_outputbytes == 0 {
             debug!("Finished decoding");
             debug!(
@@ -146,7 +143,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             );
             return None;
         }
-        if let Some(val) = self.data.next() {
+        if let Some(val) = symbol {
             // Inner data source still not empty
             debug!(
                 "Buffer {:064b} Read byte {:08b} {:?}",
@@ -198,5 +195,18 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
             self.remaining_outputbytes -= 1;
             self.consume_buffer()
         }
+    }
+}
+
+impl<R: Read> Read for Decoder<R> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
+        let nbytes = buf.len().min(self.remaining_outputbytes as usize);
+        if nbytes != 0 {
+            self.inner.read(&mut buf[..nbytes]).unwrap();
+            for i in 0..nbytes {
+                buf[i] = self.decode(Some(buf[i])).unwrap()
+            }
+        }
+        Ok(nbytes)
     }
 }

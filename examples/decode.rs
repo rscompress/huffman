@@ -23,18 +23,18 @@ fn main() {
 
     for j in 0..1 {
         // Generate random data
-        let origin: Vec<u8> =
-            generate_random_byte_vector(0, words.len() as u8, 500_000_000, &words);
+        // let origin: Vec<u8> =
+            // generate_random_byte_vector(0, words.len() as u8, 500_000_000, &words);
         // If error found save to file
         // let dfile = File::create("errors.raw").expect("Failed to create destination file");
         // let mut w = BufWriter::with_capacity(4096, dfile);
         // w.write_all(&origin).unwrap();
 
         // If error found, read from file
-        // let mut origin: Vec<u8> = Vec::new();
-        // let mut r = BufReader::with_capacity(4096, File::open("errors.raw").unwrap());
-        // r.read_to_end(&mut origin).unwrap();
-        // info!("Size: {}", origin.len());
+        let mut origin: Vec<u8> = Vec::new();
+        let mut r = BufReader::with_capacity(4096, File::open("errors.raw").unwrap());
+        r.read_to_end(&mut origin).unwrap();
+        info!("Size: {}", origin.len());
 
         // Generate Huffman Model
         let h = Huffman::from_histogram(&histogram);
@@ -50,6 +50,7 @@ fn main() {
         let now = Instant::now();
         let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
         info!("O {}", now.elapsed().as_secs_f32());
+        info!("Result {:?}",decoded_words);
 
         // Read decoding method
         let reader = BufReader::new(Cursor::new(enc.inner.get_ref()));
@@ -59,16 +60,17 @@ fn main() {
 
         // Check results of both methods
         let now = Instant::now();
+        let mut sum = 0;
         while let Ok(nbytes) = decoder.read(&mut buf) {
             if nbytes == 0 {
                 break;
             }
-            // assert_eq!(origin[sum..sum+nbytes], decoded_words[sum..sum+nbytes], "Not equal (old method)");
-            // info!("[{},{}] Old method looks good", j);
-            // assert_eq!(origin[sum..(sum+nbytes)], buf[..nbytes], "Not equal [{};{}]", sum, sum+nbytes);
-            // info!("Range {}-{} fine", sum, sum+nbytes);
-            // sum+= nbytes;
-            // info!("[{},{}] New method looks good", j);
+            assert_eq!(origin[sum..sum+nbytes], decoded_words[sum..sum+nbytes], "Not equal (old method)");
+            info!("[{}] Old method looks good", j);
+            assert_eq!(origin[sum..(sum+nbytes)], buf[..nbytes], "Not equal [{};{}]", sum, sum+nbytes);
+            info!("Range {}-{} fine", sum, sum+nbytes);
+            sum+= nbytes;
+            info!("[{}] New method looks good", j);
             full.append(&mut buf[..nbytes].to_vec());
         }
         info!("N {}", now.elapsed().as_secs_f32());

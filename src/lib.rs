@@ -21,13 +21,102 @@ use std::io::{BufReader, BufWriter};
 //static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub const BUF: usize = 4096;
+pub mod decode;
+pub mod encode;
+pub mod header;
 pub mod huffman;
 pub mod model;
 pub mod stats;
 
+use decode::read;
+
+pub fn memory_roundtrip(source: &str, destination: &str) {
+    info!("Starting memory roundtrip");
+    info!("Input:  {}", &source);
+    info!("Output: {}", &destination);
+    info!("Setting up of reader, writer, and buffer");
+    let sfile = File::open(source).expect("Failed to open source file");
+    let filesize = std::fs::metadata(source).expect("Can not read filesize").len();
+    let mut reader = BufReader::with_capacity(BUF, sfile);
+    let mut original :Vec<u8> = Vec::with_capacity(filesize as usize);
+    reader.read_to_end(&mut original).unwrap();
+    reader.seek(std::io::SeekFrom::Start(0)).unwrap();
+
+    let dfile = std::io::Cursor::new(Vec::new());
+    let model = huffman::Huffman::from_reader(&mut reader);
+    let mut writer = encode::Encoder::new(dfile, &model);
+    reader.seek(std::io::SeekFrom::Start(0)).unwrap();
+
+    //Compress file
+    let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
+    unsafe { buffer.set_len(BUF) }
+
+    info!("Starting compression");
+    loop {
+        let read_size = reader.read(&mut buffer);
+        match read_size {
+            Ok(0) => break, // fully read file
+            Ok(n) => writer
+                .write(&buffer[..n])
+                .expect("Could not write buffer to destination"),
+            Err(err) => panic!("Problem with reading source file: {:?}", err),
+        };
+    }
+    writer.flush().expect("Could not flush file to disk!");
+    info!("Compression Done");
+    info!("Starting decompression using read() method");
+    let reconstructed = read(writer.inner.get_ref(), &model, writer.readbytes);
+    info!("Decompression done");
+    info!("Starting decompression using Decoder");
+    let reader = BufReader::new(std::io::Cursor::new(writer.inner.get_ref()));
+    let mut decoder = decode::Decoder::new(reader, &writer);
+    let mut reconstructed_decoder: Vec<u8> = Vec::with_capacity(original.len());
+    while let Ok(nbytes) = decoder.read(&mut buffer) {
+        if nbytes == 0 {
+            break;
+        }
+        reconstructed_decoder.append(&mut buffer[..nbytes].to_vec());
+    }
+    info!("Decompression done");
+    info!("==== Comparisons ====");
+    if original == original {
+        info!("Original is the same as original (puh)")
+    }
+    if reconstructed == reconstructed_decoder {
+        info!("rec == rec_decoder // TRUE");
+        if reconstructed_decoder == original {
+            info!("Both methods are the same as original")
+        } else {
+            info!("Reconstructions are same, but none identical to original")
+        }
+    } else {
+        if reconstructed == original {
+            info!("read() method is same as original")
+        } else if reconstructed_decoder == original {
+            info!("decoder.read() method is same as original")
+        } else {
+            info!("Reconstructions are different and none is same as original")
+        }
+    }
+    info!("original: {:?}", original);
+    if reconstructed_decoder == vec![0;reconstructed_decoder.len()] {
+        info!("decoder.read() is full of zeros")
+    } else {
+        info!("decoder.read() has data: {:?}", reconstructed_decoder)
+    }
+    if reconstructed == vec![0;reconstructed.len()] {
+        info!("read() is full of zeros")
+    } else {
+        info!("read() has data: {:?}", reconstructed)
+    }
+    // assert_eq!(reconstructed, reconstructed_decoder);
+    // assert_eq!(original, reconstructed);
+}
+
 pub fn stream_decompress_with_header_information(source: &str, destination: &str) {
     unimplemented!()
 }
+
 pub fn stream_compress_with_header_information(source: &str, destination: &str) {
     info!("Starting compression");
     info!("Input:  {}", &source);

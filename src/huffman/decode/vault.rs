@@ -37,9 +37,8 @@ pub struct Decoder<R> {
 
 fn initiate_buffer<R: Read>(reader: &mut R) -> (u64, u64) {
     let mut result = 0u64;
-    let mut used = 0u64;
     let mut buf: [u8;8] = [0;8];
-    let mut nbytes = reader.read(&mut buf).expect("Cannot read");
+    let nbytes = reader.read(&mut buf).expect("Cannot read");
 
     for i in 0..nbytes {
         result += (buf[i] as u64) << (56 - i * 8)
@@ -208,5 +207,66 @@ impl<R: Read> Read for Decoder<R> {
             }
         }
         Ok(nbytes)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::huffman::Huffman;
+    use crate::huffman::encode::Encoder;
+    use std::io::{Cursor, Write};
+
+    fn encode_str(sentence: &str) -> (Vec<u8>, Vec<u8>, Huffman){
+        let data = sentence.as_bytes().to_vec();
+        let h = Huffman::from_slice(data.as_slice());
+
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+        let _output_bytes = enc.write(&data).expect("");
+        enc.flush().expect("");
+        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        (data, encoded_data, h)
+    }
+
+    fn roundtrip_decode_blockwise(sentence: &str, blocksize: usize) {
+        let (data, encoded_data, h) = encode_str(sentence);
+        println!("Encoded {:?} ({}) [{}]", encoded_data, sentence, sentence.len());
+        let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
+        let mut decoded_data = vec![0u8; blocksize];
+        let mut nbytes = 1;
+        let mut iteration = 0;
+
+        // TODO: read_to_end() does not seem to work
+        while nbytes > 0 {
+            nbytes = decoder.read(&mut decoded_data).unwrap();
+            assert_eq!(decoded_data[..nbytes], data[iteration..iteration+nbytes]);
+            iteration += nbytes;
+            println!("{:?} {}", decoded_data, nbytes);
+        }
+    }
+
+    fn roundtrip_decode_at_once(sentence: &str) {
+        let (data, encoded_data, h) = encode_str(sentence);
+        println!("Encoded {:?} ({})", encoded_data, sentence);
+        let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
+        let mut decoded_data: Vec<u8> = Vec::new();
+
+        let nbytes = decoder.read_to_end(&mut decoded_data).unwrap();
+        println!("Decoded {:?}", decoded_data);
+        println!("{:?}", decoded_data);
+        assert_eq!(data.len(), nbytes);
+        assert_eq!(data, decoded_data);
+    }
+
+    #[test]
+    fn roundtrip_blockwise() {
+        roundtrip_decode_blockwise("This is a lovely text in a big world", 10);
+        roundtrip_decode_blockwise("aaafaaaaaaaaa", 10);
+    }
+
+    #[test]
+    fn roundtrip_at_once() {
+        roundtrip_decode_at_once("This is a lovely text in a big world");
+        roundtrip_decode_at_once("aaafaaaaaaaaa");
     }
 }

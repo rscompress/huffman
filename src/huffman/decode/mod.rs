@@ -287,6 +287,18 @@ mod tests {
         (data, encoded_data, h)
     }
 
+    fn encode_file(mut file: std::fs::File) -> (Vec<u8>, Vec<u8>, Huffman){
+        let mut data : Vec<u8> = Vec::new(); //file.as_bytes().to_vec();
+        file.read_to_end(&mut data).unwrap();
+        let h = Huffman::from_slice(data.as_slice());
+
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+        let _output_bytes = enc.write(&data).expect("");
+        enc.flush().expect("");
+        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        (data, encoded_data, h)
+    }
+
     fn roundtrip_decode_blockwise(sentence: &str, blocksize: usize) {
         let (data, encoded_data, h) = encode_str(sentence);
         println!("Encoded {:?} ({}) [{}]", encoded_data, sentence, sentence.len());
@@ -307,6 +319,18 @@ mod tests {
     fn roundtrip_decode_at_once(sentence: &str) {
         let (data, encoded_data, h) = encode_str(sentence);
         println!("Encoded {:?} ({})", encoded_data, sentence);
+        let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
+        let mut decoded_data: Vec<u8> = Vec::new();
+
+        let nbytes = decoder.read_to_end(&mut decoded_data).unwrap();
+        println!("Decoded {:?}", decoded_data);
+        println!("{:?}", decoded_data);
+        assert_eq!(data.len(), nbytes);
+        assert_eq!(data, decoded_data);
+    }
+    fn roundtrip_decode_at_once_file(file: std::fs::File) {
+        let (data, encoded_data, h) = encode_file(file);
+        println!("Encoded {:?}", encoded_data);
         let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
         let mut decoded_data: Vec<u8> = Vec::new();
 

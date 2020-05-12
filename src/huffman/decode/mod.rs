@@ -1,175 +1,208 @@
-use super::encode::Encoder;
-use super::header::Header;
-use crate::model::Model;
+//! New decoding method for Huffman encoded data
+//!
+//! # Inner workings of the `Decoder`
+//! The main elements of the `Decoder` are the `buffer`, `vault`, and
+//! `sentinel`. The first `sentinel` bits of the `buffer` are read and
+//! decoded (call to `get_cut_and_symbol()`).
+//! This decoding process returns the number of bits evaluated (`cut`)
+//! and the decoded symbol. Afterwards, the `cut` MSB from the buffer will be
+//! removed. Next, the `cut` LSB from the buffer will be filled via the `cut`
+//! MSB from the `vault`. The current symbol will be written at the end of
+//! the vault. This may cause the vault to overfill. Should the vault be
+//! close to overfilling, values from the buffer are decoded into the
+//! `_reserve`. This causes the `vault` to be emptied, since the buffer gets
+//! refilled with the `vault`.
+
 use log::debug;
-use std::collections::BTreeMap;
-use std::io::Error;
-use std::io::{Read, Write};
-use succinct::bit_vec::BitVecMut;
-use succinct::rank::BitRankSupport;
-use succinct::rsdict::RsDict;
-use succinct::BitVector;
+use std::collections::LinkedList;
+use crate::model::Model;
+use std::io::Read;
 
-pub mod vault;
+mod symboltable;
 
-pub struct Decoder<R: Read> {
+const MAX_VAULT: u64 = 52;
+const MIN_VAULT: u64 = 16;
+
+/// The Decoder<I> struct decodes iterable data structures
+#[derive(Debug)]
+pub struct Decoder<R> {
     inner: R,
     buffer: u64,
-    bits_left_in_buffer: u8,
-    // bt: BTreeMap<usize, (u8, u8)>,
-    table: Vec<(u8, u8)>,
-    rbv: RsDict,
-    sentinel: usize,
-    writeout: usize,
-    goalsbyte: usize,
-    shift: u8,
+    vault: u64,
+    sentinel: u64,
+    remaining_outputbytes: u64,
+    symboltable: symboltable::SymbolTable,
+    _reserve: LinkedList<u8>,
+    _vaultstatus: u64,
+    _bufferstatus: u64,
 }
 
+fn initiate_buffer<R: Read>(reader: &mut R) -> (u64, u64) {
+    let mut result = 0u64;
+    let mut buf: [u8;8] = [0;8];
+    let nbytes = reader.read(&mut buf).expect("Cannot read");
+
+    for i in 0..nbytes {
+        result += (buf[i] as u64) << (56 - i * 8)
+    }
+    (result, nbytes as u64)
+}
+
+fn initiate_sentinel(sentinel: u64) -> u64 {
+    // TODO Remove constraint
+    assert!(sentinel <= 8);
+    sentinel
+}
+
+fn initiate_reserve() -> LinkedList<u8> {
+    LinkedList::<u8>::new()
+}
+
+
 impl<R: Read> Decoder<R> {
-    pub fn new<W: Write, M: Model>(reader: R, encoder: &Encoder<W, M>) -> Self {
+    pub fn new<M: Model>(mut reader: R, model: &M, output: u64) -> Self {
+        let (buffer, bufferstatus) = initiate_buffer(&mut reader);
         Decoder {
+            buffer,
             inner: reader,
-            buffer: 0,
-            bits_left_in_buffer: 64,
-            table: {
-                let (t, _) = prepare_lookup(&encoder.model.to_btreemap());
-                t
-            },
-            rbv: {
-                let (_, v) = prepare_lookup(&encoder.model.to_btreemap());
-                v
-            },
-            sentinel: encoder.model.sentinel(),
-            writeout: 0,
-            goalsbyte: encoder.readbytes,
-            shift: 64 - encoder.model.sentinel() as u8,
+            _vaultstatus: 0,
+            _bufferstatus: bufferstatus,
+            vault: 0,
+            sentinel: initiate_sentinel(model.sentinel() as u64),
+            _reserve: initiate_reserve(),
+            remaining_outputbytes: output,
+            symboltable: symboltable::SymbolTable::from_btree(&model.to_btreemap())
         }
     }
-    pub fn from_header(header: Header, reader: R) -> Self {
-        Decoder {
-            inner: reader,
-            buffer: 0,
-            bits_left_in_buffer: 64,
-            table: {
-                let (t, _) = prepare_lookup(&header.btree);
-                t
-            },
-            rbv: {
-                let (_, v) = prepare_lookup(&header.btree);
-                v
-            },
-            sentinel: header.sentinel,
-            writeout: 0,
-            goalsbyte: header.readbytes,
-            shift: 64 - header.sentinel as u8,
+    fn consume_buffer(&mut self) -> Option<u8> {
+        debug!(
+            "Consuming b{:064b} v{:064b} {} {}",
+            self.buffer, self.vault, self._vaultstatus, self._bufferstatus
+        );
+        let lookup_value = self.buffer >> (64 - self.sentinel);
+        let (cut, sym) = self.symboltable.get_cut_and_symbol(lookup_value);
+        if cut as u64 > self._bufferstatus {
+            return None;
+        }
+        if cut <= self._vaultstatus as usize {
+            // normal process
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - cut);
+            self.vault <<= cut;
+            self._vaultstatus -= cut as u64;
+            return Some(sym);
+        } else if self._vaultstatus > 0 {
+            // TODO Same as above might be just to a min(cut,vault)
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - self._vaultstatus);
+            self._bufferstatus -= cut as u64 - self._vaultstatus;
+            self.vault <<= self._vaultstatus;
+            self._vaultstatus -= self._vaultstatus;
+            return Some(sym);
+        } else {
+            self.buffer <<= cut;
+            self._bufferstatus -= cut as u64;
+            return Some(sym);
+        }
+    }
+    fn empty_vault(&mut self) {
+        while self._vaultstatus > MIN_VAULT {
+            let lookup_value = self.buffer >> (64 - self.sentinel);
+            let (cut, sym) = self.symboltable.get_cut_and_symbol(lookup_value);
+            assert!(cut as u64 <= self._vaultstatus);
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - cut);
+            self.vault <<= cut;
+            self._vaultstatus -= cut as u64;
+            self._reserve.push_back(sym);
+        }
+    }
+    fn decode(&mut self, symbol: Option<u8>) -> Option<u8> {
+        if self.remaining_outputbytes == 0 {
+            debug!("Finished decoding");
+            debug!(
+                "Buffer {:064b} Vault {:064b}",
+                self.buffer, self.vault
+            );
+            return None;
+        }
+        if let Some(val) = symbol {
+            // Inner data source still not empty
+            debug!(
+                "Buffer {:064b} Read byte {:08b} {:?}",
+                self.buffer, val, self._reserve
+            );
+
+            // Check vault fill
+            if self._vaultstatus > MAX_VAULT {
+                self.empty_vault();
+                debug!("Reserve {:?}", self._reserve)
+            };
+
+            // TODO Starting here a lot of overlap with empty_vault()
+            // move value to vault
+            debug!("{:?} {:?}", self.vault, self._vaultstatus);
+            self.vault += (val as u64) << (64 - self._vaultstatus - 8);
+            self._vaultstatus += 8;
+
+            // decode word
+            let lookup_value = self.buffer >> (64 - self.sentinel);
+            let (cut, sym) = self.symboltable.get_cut_and_symbol(lookup_value);
+            assert!(cut as u64 <= self._vaultstatus);
+
+            // fill buffer from vault
+            self.buffer <<= cut;
+            self.buffer += self.vault >> (64 - cut);
+
+            // update vault
+            self.vault <<= cut;
+            self._vaultstatus -= cut as u64;
+
+            // TODO Might be optimised using .or_else()
+            match self._reserve.pop_front() {
+                Some(from_reserve) => {
+                    self._reserve.push_back(sym);
+                    self.remaining_outputbytes -= 1;
+                    return Some(from_reserve);
+                }
+                None => {
+                    self.remaining_outputbytes -= 1;
+                    return Some(sym);
+                }
+            }
+        } else if let Some(reserve) = self._reserve.pop_front() {
+            // Inner data source empty. First output reserve
+            self.remaining_outputbytes -= 1;
+            return Some(reserve);
+        } else {
+            // Finish output by consuming buffer
+            self.remaining_outputbytes -= 1;
+            self.consume_buffer()
         }
     }
 }
 
 impl<R: Read> Read for Decoder<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        let nbytes = (self.goalsbyte - self.writeout).min(buf.len());
-        let mut consumed = 0;
-        let mut iter = self.inner.by_ref().bytes(); //.skip(self.pos);
-        while let Some(Ok(val)) = iter.next() {
-            // debug!("Reading {}", val);
-            if self.bits_left_in_buffer >= 16 {
-                // There is still room for a byte in the buffer -> fill it up
-                let v = (val as u64) << (self.bits_left_in_buffer - 8);
-                self.buffer += v;
-                self.bits_left_in_buffer -= 8;
-                debug!(
-                    "Add: {:064b} BLE {:2}",
-                    self.buffer, self.bits_left_in_buffer
-                );
-                continue;
-            }
-            while (64 - self.bits_left_in_buffer - 8) as usize >= self.sentinel && consumed < nbytes
-            {
-                // Actual decoding of the values from the buffer. As long as the consumed is less than nbytes
-                // or the buffer needs to be filled up again
-                let searchvalue = self.buffer >> self.shift;
-                let pos = self.rbv.rank1(searchvalue + 1) as usize - 1;
-                let (sym, length) = self.table[pos];
-                // debug!("Decoded {} {} {}", sym, length, consumed);
-                buf[consumed] = sym;
-                consumed += 1;
-                self.writeout += 1;
-                self.buffer <<= length;
-                debug!(
-                    "Rem: {:064b} SYM {:b} LEN {} SVA {} CNS {}",
-                    self.buffer, sym, length, searchvalue, consumed
-                );
-                self.bits_left_in_buffer += length;
-            }
-            debug!(
-                "Out: {:064b} BLE {} >",
-                self.buffer, self.bits_left_in_buffer
-            );
-            // Do not forget to add the current value `val` into the buffer
-            let v = (val as u64) << (self.bits_left_in_buffer - 8);
-            self.buffer += v;
-            self.bits_left_in_buffer -= 8;
-            if consumed >= nbytes {
-                // If consumed was the reason for the break above, return written bytes
-                // otherwise continue
-                debug!(
-                    "Out: {:064b} BLE {} >",
-                    self.buffer, self.bits_left_in_buffer
-                );
-                return Ok(consumed);
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
+        let nbytes = buf.len().min(self.remaining_outputbytes as usize);
+        if nbytes != 0 {
+            self.inner.read(&mut buf[..nbytes]).unwrap();
+            for i in 0..nbytes {
+                buf[i] = self.decode(Some(buf[i])).unwrap()
             }
         }
-        // debug!("{} {} {} {}", consumed, self.writeout, self.goalsbyte, nbytes);
-        // assert!(self.goalsbyte - self.writeout == nbytes);
-        while consumed < nbytes {
-            let searchvalue = self.buffer >> self.shift;
-            let pos = self.rbv.rank1(searchvalue + 1) as usize - 1;
-            let (sym, length) = self.table[pos];
-            // debug!("{} {:?} {}", consumed, buf, sym);
-            buf[consumed] = sym;
-            consumed += 1;
-            self.writeout += 1;
-            self.buffer <<= length;
-            self.bits_left_in_buffer += length;
-        }
-        Ok(consumed)
+        Ok(nbytes)
     }
 }
 
-pub fn prepare_lookup(bt: &BTreeMap<usize, (u8, u8)>) -> (Vec<(u8, u8)>, RsDict) {
-    debug!("Btree from encoder: {:?}", bt);
-    let table: Vec<(u8, u8)> = bt.values().cloned().collect();
-    let keys: Vec<usize> = bt.keys().cloned().collect();
-    let m: usize = keys[keys.len() - 1];
-    let mut bv: BitVector<u64> = BitVector::with_fill(m as u64 + 1, false);
-    for k in keys {
-        bv.set_bit(k as u64, true);
-    }
-    let mut jbv = RsDict::new();
-    for bit in bv.iter() {
-        jbv.push(bit);
-    }
-
-    (table, jbv)
-}
-
-pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
-    let mut iter = tree.range(..key + 1);
-
-    if let Some((_, v)) = iter.next_back() {
-        *v
-    } else {
-        panic!("Panic!!!!")
-    }
-}
+use succinct::rank::BitRankSupport;
 
 pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
     let mut buffer: u64 = 0;
     let mut bits_left_in_buffer = 64u8;
     let bt = model.to_btreemap();
     debug!("{:?}", &bt);
-    let (table, rbv) = prepare_lookup(&model.to_btreemap());
+    let (table, rbv) = symboltable::prepare_lookup(&model.to_btreemap());
     let s = model.sentinel();
     let shift = 64 - s;
     let mut result: Vec<u8> = Vec::with_capacity(data.len());
@@ -189,11 +222,6 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
             let pos = rbv.rank1(searchvalue + 1) as usize - 1;
             let (sym, length) = table[pos];
             result.push(sym);
-            // let s = result[writeout];
-            // let exp = origin[writeout];
-            // if s != exp {
-            //     println!("Oh oh {}", writeout);
-            // }
             debug!(
                 "{}: Buffer: {:64b} Select: {:b} Decoded to: {} Shift buffer: {}",
                 writeout, buffer, searchvalue, result[writeout], length
@@ -230,50 +258,76 @@ pub fn read(data: &[u8], model: &impl Model, goalsbyte: usize) -> Vec<u8> {
     result
 }
 
+use std::collections::BTreeMap;
+pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
+    let mut iter = tree.range(..key + 1);
+
+    if let Some((_, v)) = iter.next_back() {
+        *v
+    } else {
+        panic!("Panic!!!!")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::huffman::encode::{calculate_length, Encoder};
     use crate::huffman::Huffman;
+    use crate::huffman::encode::Encoder;
     use std::io::{Cursor, Write};
 
-    #[test]
-    fn decode_numbers() {
-        // Generate Huffman Encoder
-        let words: Vec<u8> = vec![177, 112, 84, 143, 148, 195, 165, 206, 34, 10];
-        let mut codewords = [0usize; 256];
-        let mut length = [0usize; 256];
-        for word in words.iter() {
-            codewords[*word as usize] = *word as usize;
-            length[*word as usize] = calculate_length(*word as usize);
-        }
-        let h = Huffman::new(codewords, length);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+    fn encode_str(sentence: &str) -> (Vec<u8>, Vec<u8>, Huffman){
+        let data = sentence.as_bytes().to_vec();
+        let h = Huffman::from_slice(data.as_slice());
 
-        // Encode `words`
-        enc.write(&words).expect("");
+        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+        let _output_bytes = enc.write(&data).expect("");
         enc.flush().expect("");
-        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
-        assert_eq!(words.as_slice(), decoded_words.as_slice());
+        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        (data, encoded_data, h)
+    }
+
+    fn roundtrip_decode_blockwise(sentence: &str, blocksize: usize) {
+        let (data, encoded_data, h) = encode_str(sentence);
+        println!("Encoded {:?} ({}) [{}]", encoded_data, sentence, sentence.len());
+        let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
+        let mut decoded_data = vec![0u8; blocksize];
+        let mut nbytes = 1;
+        let mut iteration = 0;
+
+        // TODO: read_to_end() does not seem to work
+        while nbytes > 0 {
+            nbytes = decoder.read(&mut decoded_data).unwrap();
+            assert_eq!(decoded_data[..nbytes], data[iteration..iteration+nbytes]);
+            iteration += nbytes;
+            println!("{:?} {}", decoded_data, nbytes);
+        }
+    }
+
+    fn roundtrip_decode_at_once(sentence: &str) {
+        let (data, encoded_data, h) = encode_str(sentence);
+        println!("Encoded {:?} ({})", encoded_data, sentence);
+        let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
+        let mut decoded_data: Vec<u8> = Vec::new();
+
+        let nbytes = decoder.read_to_end(&mut decoded_data).unwrap();
+        println!("Decoded {:?}", decoded_data);
+        println!("{:?}", decoded_data);
+        assert_eq!(data.len(), nbytes);
+        assert_eq!(data, decoded_data);
     }
 
     #[test]
-    fn decode_numbers_histogram_encoded() {
-        let words: Vec<u8> = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
-        let mut histogram = [0usize; 256];
-        for i in 0..words.len() {
-            histogram[i] = words[i] as usize;
-        }
-        let h = Huffman::from_histogram(&histogram);
-        let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
+    fn roundtrip_blockwise() {
+        roundtrip_decode_blockwise("This is a lovely text in a big world", 10);
+        roundtrip_decode_blockwise("aaafaaaaaaaaa", 5);
+        roundtrip_decode_blockwise("aaaaaa", 2);
+    }
 
-        // Encode `words`
-        let origin: Vec<u8> = vec![
-            0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 7, 0, 7, 4, 9, 9, 0, 0, 0, 4, 0,
-        ];
-        enc.write(&origin).expect("");
-        enc.flush().expect("");
-        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
-        assert_eq!(origin.as_slice(), decoded_words.as_slice());
+    #[test]
+    fn roundtrip_at_once() {
+        roundtrip_decode_at_once("This is a lovely text in a big world");
+        roundtrip_decode_at_once("aaafaaaaaaaaa");
+        roundtrip_decode_at_once("aaaaaa");
     }
 }

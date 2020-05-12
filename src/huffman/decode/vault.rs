@@ -20,6 +20,9 @@ use crate::model::Model;
 use succinct::rank::BitRankSupport;
 use crate::huffman::decode::prepare_lookup;
 
+const MAX_VAULT: u64 = 52;
+const MIN_VAULT: u64 = 16;
+
 /// The Decoder<I> struct decodes iterable data structures
 #[derive(Debug)]
 pub struct Decoder<R> {
@@ -113,7 +116,7 @@ impl<R: Read> Decoder<R> {
         }
     }
     fn empty_vault(&mut self) {
-        while self.vault & 0x00FF_FFFF_FFFF_FFFF > 0 {
+        while self._vaultstatus > MIN_VAULT {
             let lookup_value = self.buffer >> (64 - self.sentinel);
             let (cut, sym) = self.get_cut_and_symbol(lookup_value);
             assert!(cut as u64 <= self._vaultstatus);
@@ -150,13 +153,14 @@ impl<R: Read> Decoder<R> {
             );
 
             // Check vault fill
-            if self.vault & 0x0000_0000_FFFF_FFFF > 0 {
+            if self._vaultstatus > MAX_VAULT {
                 self.empty_vault();
-                debug!("Reserve {:?}", self._reserve)
+                println!("Reserve {:?}", self._reserve)
             };
 
             // TODO Starting here a lot of overlap with empty_vault()
             // move value to vault
+            println!("{:?} {:?}", self.vault, self._vaultstatus);
             self.vault += (val as u64) << (64 - self._vaultstatus - 8);
             self._vaultstatus += 8;
 
@@ -261,12 +265,14 @@ mod tests {
     #[test]
     fn roundtrip_blockwise() {
         roundtrip_decode_blockwise("This is a lovely text in a big world", 10);
-        roundtrip_decode_blockwise("aaafaaaaaaaaa", 10);
+        roundtrip_decode_blockwise("aaafaaaaaaaaa", 5);
+        roundtrip_decode_blockwise("aaaaaa", 2);
     }
 
     #[test]
     fn roundtrip_at_once() {
         roundtrip_decode_at_once("This is a lovely text in a big world");
         roundtrip_decode_at_once("aaafaaaaaaaaa");
+        roundtrip_decode_at_once("aaaaaa");
     }
 }

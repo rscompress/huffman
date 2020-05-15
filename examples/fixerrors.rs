@@ -1,33 +1,47 @@
-use std::io::{BufReader, Read, Cursor, Write};
+use std::io::{BufReader, Read, Cursor, Write, Seek};
 use std::fs::File;
-use log::{error, info, debug};
+use log::{info};
 use rscompress_huffman::huffman::{Huffman, encode::Encoder};
+use std::time::Instant;
+use rscompress_huffman::huffman::decode::one::read;
 
 fn main() {
     env_logger::init();
     let mut origin: Vec<u8> = Vec::new();
-    let mut r = BufReader::with_capacity(4096, File::open("testdata/errors.itr.25.raw").unwrap());
+    let mut r = BufReader::with_capacity(4096, File::open("testdata/test.tmp").unwrap());
     r.read_to_end(&mut origin).unwrap();
+    r.seek(std::io::SeekFrom::Start(0)).unwrap();
     info!("Size: {}", origin.len());
 
-    // Prepare histogram
-    let words: Vec<u8> = vec![20, 17, 6, 3, 2, 2, 2, 1, 1, 1];
-    let mut histogram = [0usize; 256];
-    for i in 0..words.len() {
-        histogram[i] = words[i] as usize;
-    }
-    let h = Huffman::from_histogram(&histogram);
+    // Generate Huffman Model
+    let h = Huffman::from_reader(&mut Cursor::new(&origin));
+
+    // Generate Encoder and apply to data
+    let now = Instant::now();
     let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
     enc.write(&origin).expect("");
     enc.flush().expect("");
+    info!("Encoding {}", now.elapsed().as_secs_f32());
     let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
 
-    let decoder = rscompress_huffman::huffman::decode::vault::Decoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
-    let decoded_data: Vec<u8> = decoder.collect();
+    // There are three different implementations of the decoder.
+    // They are being tested for possible errors while decoding.
 
-    for (i, (exp, result)) in origin.iter().zip(decoded_data.iter()).enumerate() {
-        if exp != result {
-            error!("@{} -> {} != {}", i, exp, result)
-        }
-    }
+    // Decoder using read()
+    let now = Instant::now();
+    let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
+    let mut decoded_data: Vec<u8> = Vec::new();
+    decoder.read_to_end(&mut decoded_data).unwrap();
+    info!("Decoder Reader {}", now.elapsed().as_secs_f32());
+
+    // Decoder using simple function
+    let now = Instant::now();
+    let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
+    info!("Simple function {}", now.elapsed().as_secs_f32());
+
+    // Decoder using iterator
+    let now = Instant::now();
+    let decoder = rscompress_huffman::huffman::decode::iterator::Decoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
+    let decoded_data: Vec<u8> = decoder.collect();
+    info!("Iterator function {}", now.elapsed().as_secs_f32());
 }

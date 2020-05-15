@@ -271,7 +271,7 @@ fn benchmark_packing_of_bits_encode(c: &mut Criterion) {
     group.finish();
 }
 
-use rscompress_huffman::huffman::decode::{read, search_key_or_next_small_key};
+use rscompress_huffman::huffman::decode::{one::read, one::search_key_or_next_small_key};
 use rscompress_huffman::model::Model;
 use std::io::Write;
 

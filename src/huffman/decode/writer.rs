@@ -45,7 +45,7 @@ impl<W: Write> Decoder<W> {
         } else {
             let bufferpart = 64 - self.bufferstatus;
             let vaultpart = 8 - bufferpart;
-            self.buffer += byte as u64 >> bufferpart;
+            self.buffer += byte as u64 >> (8 - bufferpart);
             self.bufferstatus += bufferpart;
             self.add_to_vault_partially(byte, vaultpart as usize)?;
         }
@@ -54,7 +54,7 @@ impl<W: Write> Decoder<W> {
     fn add_to_vault_partially(&mut self, byte: u8, parts: usize) -> Result<(), Error> {
         let value = byte & (2u8.pow(parts as u32) - 1);
         if self.vaultstatus <= ((VAULT_MAX as i32 * 8) - parts as i32) {
-            self.vault += value as u64;
+            self.vault += (value as u64) << (64 - self.vaultstatus - parts as i32);
             self.vaultstatus += parts as i32;
         } else {
             warn!("Cannot add to vault partially: Needed [{}], Available [{}]", parts, VAULT_MAX as i32 * 8 - self.vaultstatus);
@@ -98,9 +98,13 @@ impl<W: Write> Decoder<W> {
         } else if self.vaultstatus >= needed {
             self.buffer += self.vault >> (64 - needed);
             self.bufferstatus += needed;
+            self.vault <<= needed;
+            self.vaultstatus -= needed;
         } else if self.vaultstatus > 0 {
             self.buffer += self.vault >> (64 - self.vaultstatus);
             self.bufferstatus += self.vaultstatus;
+            self.vault <<= self.vaultstatus;
+            self.vaultstatus -= self.vaultstatus;
         } else {
             warn!("Buffer will not be filled from vault!: Needed [{}], Available [{}]", needed, self.vaultstatus)
         }
@@ -154,17 +158,17 @@ mod tests {
         (data, encoded_data, h)
     }
 
-    fn get_decoder_for_string(sentence: &str) -> Decoder<Cursor<Vec<u8>>> {
-        let (data, _, h) = encode_str(sentence);
+    fn get_decoder_for_string(sentence: &str) -> (Vec<u8>,  Decoder<Cursor<Vec<u8>>>) {
+        let (data, encdata, h) = encode_str(sentence);
         let writer = Cursor::new(Vec::new());
         let d = Decoder::new(writer, &h, data.len() as u64);
-        return d
+        return (encdata,d)
     }
 
     #[test]
     fn test_buffer_and_vault_access() {
         let sentence = "What a lovely world";
-        let mut decoder = get_decoder_for_string(sentence);
+        let (_,mut decoder) = get_decoder_for_string(sentence);
         decoder.write(&[43]).unwrap();
         assert_eq!(decoder.buffer, 43 << 56);
         decoder.buffer = 0;
@@ -176,25 +180,57 @@ mod tests {
     // buffer empty, vault empty
     #[test]
     fn test_fill_values_to_buffer() {
-        unimplemented!()
+        let sentence = "What a lovely world";
+        let (edata,mut decoder) = get_decoder_for_string(sentence);
+        decoder.write(&edata[..8]).unwrap();
+        for i in 0..8 {
+            let bufvalue = (decoder.buffer >> 56 - i*8) & 255;
+            assert_eq!(bufvalue as u8, edata[i]);
+        }
     }
 
     // buffer < 8 bits free, vault empty
     #[test]
     fn test_fill_values_to_buffer_and_vault() {
-        unimplemented!()
+        let sentence = "What a lovely world";
+        let (_,mut decoder) = get_decoder_for_string(sentence);
+        for i in 0..8 {
+            decoder.buffer = 0;
+            decoder.bufferstatus = 64 - i;
+            decoder.vault = 0;
+            decoder.vaultstatus = 0;
+            decoder.write(&[255]).unwrap();
+            println!("{}", decoder);
+            assert_eq!(decoder.buffer, 2u64.pow(i as u32) - 1);
+            assert_eq!(decoder.vault >> 64 - 8 + i, 2u64.pow(8 - i as u32) - 1);
+        }
+
     }
 
     // buffer full, vault empty
     #[test]
     fn test_fill_values_to_vault() {
-        unimplemented!()
+        let sentence = "What a lovely world";
+        let (edata,mut decoder) = get_decoder_for_string(sentence);
+        decoder.bufferstatus = 64;
+        decoder.write(&edata[..7]).unwrap();
+        for i in 0..7 {
+            let decvalue = (decoder.vault >> 56 - i*8) & 255;
+            assert_eq!(decvalue as u8, edata[i]);
+        }
     }
 
     // buffer full, vault < 8 bits free => which forces an output
     #[test]
     fn test_fill_values_to_vault_overflow() {
-        unimplemented!()
+        let sentence = "What a lovely world";
+        let (edata,mut decoder) = get_decoder_for_string(sentence);
+        decoder.vaultstatus = 61;
+        decoder.write(&edata).unwrap();
+
+        let expected = sentence.as_bytes();
+        assert_eq!(*decoder.inner.get_ref(),
+                    expected[..expected.len() - decoder.remaining_outputbytes as usize].to_vec());
     }
 
     // output all encoded bytes, without using conume_buffer()

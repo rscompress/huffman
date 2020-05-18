@@ -81,6 +81,9 @@ impl<W: Write> Decoder<W> {
         Ok(())
     }
     fn put(&mut self) -> Result<(), Error> {
+        if self.remaining_outputbytes == 0 {
+            return Err(Error::new(ErrorKind::Other, "All data already output"))
+        }
         assert!(self.bufferstatus >= self.sentinel as i32);
         let lookup_value = self.buffer >> (64 - self.sentinel);
         let (cut, sym) = self.symboltable.get_cut_and_symbol(lookup_value);
@@ -110,9 +113,6 @@ impl<W: Write> Decoder<W> {
         }
         Ok(())
     }
-    fn consume_buffer(&mut self) -> Result<(), Error> {
-        unimplemented!()
-    }
 }
 
 impl<W: Write> Write for Decoder<W> {
@@ -123,9 +123,31 @@ impl<W: Write> Write for Decoder<W> {
         let nbytes = self.remaining_outputbytes.min(buf.len() as u64);
         for &byte in buf[..nbytes as usize].iter() {
             if self.bufferstatus < 64 {
-                self.add_to_buffer(byte)?;
+                match self.add_to_buffer(byte) {
+                    Ok(()) => {},
+                    Err(error) => match error.kind() {
+                        ErrorKind::Other => {
+                            if error.to_string() == "All data already output" {
+                                return Ok(0)
+                            } else {
+                                panic!("Problem with data handling: {}", error)
+                            }},
+                        _ => { panic!("Problem with data handling {}", error)}
+                        }
+                    }
             } else if self.bufferstatus == 64 {
-                self.add_to_vault(byte)?;
+                match self.add_to_vault(byte) {
+                    Ok(()) => {},
+                    Err(error) => match error.kind() {
+                        ErrorKind::Other => {
+                            if error.to_string() == "All data already output" {
+                                return Ok(0)
+                            } else {
+                                panic!("Problem with data handling: {}", error)
+                            }},
+                        _ => { panic!("Problem with data handling {}", error)}
+                        }
+                    }
             } else {
                 return Err(Error::new(ErrorKind::Other, "Buffer overflow"))
             }
@@ -135,7 +157,10 @@ impl<W: Write> Write for Decoder<W> {
         Ok(nbytes as usize)
     }
     fn flush(&mut self) -> Result<(), Error> {
-        self.consume_buffer()
+        while self.remaining_outputbytes > 0 {
+            self.put()?;
+        }
+        Ok(())
     }
 }
 
@@ -204,7 +229,6 @@ mod tests {
             assert_eq!(decoder.buffer, 2u64.pow(i as u32) - 1);
             assert_eq!(decoder.vault >> 64 - 8 + i, 2u64.pow(8 - i as u32) - 1);
         }
-
     }
 
     // buffer full, vault empty
@@ -236,6 +260,22 @@ mod tests {
     // output all encoded bytes, without using conume_buffer()
     #[test]
     fn test_roundtrip_without_consuming_buffer() {
-        unimplemented!()
+        let sentence = "What a lovely world in this whole world with a really nice graphics";
+        let (edata,mut decoder) = get_decoder_for_string(sentence);
+        decoder.write(&edata).unwrap();
+        while decoder.remaining_outputbytes > 0 {
+            decoder.write(&[0]).unwrap();
+        }
+        assert_eq!(*decoder.inner.get_ref(), sentence.as_bytes().to_vec());
+    }
+
+    // roundtrip with write_all
+    #[test]
+    fn test_roundtrip_with_write_all() {
+        let sentence = "What a lovely world in this whole world with a really nice graphics";
+        let (edata,mut decoder) = get_decoder_for_string(sentence);
+        decoder.write_all(&edata).unwrap();
+        decoder.flush().unwrap();
+        assert_eq!(*decoder.inner.get_ref(), sentence.as_bytes().to_vec());
     }
 }

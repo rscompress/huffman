@@ -19,7 +19,10 @@ fn main() {
     for j in 0..ROUNDS {
 
         // Generate random data
-        let origin: Vec<u8> = generate_bytes(32*1024*1024);
+        let mut origin: Vec<u8> = Vec::new();
+        let mut r = BufReader::with_capacity(4096, File::open("test.raw").unwrap());
+        r.read_to_end(&mut origin).unwrap();
+        r.seek(std::io::SeekFrom::Start(0)).unwrap();
 
         // Generate Huffman Model
         let h = Huffman::from_reader(&mut Cursor::new(&origin));
@@ -35,16 +38,30 @@ fn main() {
         // There are three different implementations of the decoder.
         // They are being tested for possible errors while decoding.
 
-        // Decoder using read()
+        // Writer Decoder
         let now = Instant::now();
-        let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
-        let mut decoded_data: Vec<u8> = Vec::new();
-        decoder.read_to_end(&mut decoded_data).unwrap();
-        info!("Decoder Reader {}", now.elapsed().as_secs_f32());
-        if decoded_data != origin {
-            error!("{} Decoder Reader wrong!", j);
-            write_file("reader", j, &origin)
+        let mut decoder = rscompress_huffman::huffman::decode::writer::Decoder::new(
+            Cursor::new(Vec::with_capacity(origin.len())),
+            &h,
+            origin.len() as u64);
+        decoder.write_all(&encoded_data);
+        decoder.flush();
+        info!("Decoder Writer {}", now.elapsed().as_secs_f32());
+        if decoder.inner.get_ref() != &origin {
+            error!("{} Decoder Writer wrong!", j);
+            write_file("writer", j, &origin)
         }
+
+        // // Decoder using read()
+        // let now = Instant::now();
+        // let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
+        // let mut decoded_data: Vec<u8> = Vec::new();
+        // decoder.read_to_end(&mut decoded_data).unwrap();
+        // info!("Decoder Reader {}", now.elapsed().as_secs_f32());
+        // if decoded_data != origin {
+        //     error!("{} Decoder Reader wrong!", j);
+        //     write_file("reader", j, &origin)
+        // }
 
         // Decoder using simple function
         let now = Instant::now();

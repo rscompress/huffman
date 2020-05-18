@@ -1,14 +1,14 @@
 use crate::huffman::decode::symboltable;
 use crate::model::Model;
 use std::io::{Write, Error, ErrorKind};
-use log::{warn};
+use log::{warn, debug};
 
 const VAULT_MAX: u64 = 6;
 const VAULT_MIN: u64 = 2;
 
 #[derive(Debug)]
 pub struct Decoder<W> {
-    inner: W,
+    pub inner: W, // TODO reverse for publication
     buffer: u64,
     vault: u64,
     bufferstatus: i32,
@@ -57,7 +57,7 @@ impl<W: Write> Decoder<W> {
             self.vault += (value as u64) << (64 - self.vaultstatus - parts as i32);
             self.vaultstatus += parts as i32;
         } else {
-            warn!("Cannot add to vault partially: Needed [{}], Available [{}]", parts, VAULT_MAX as i32 * 8 - self.vaultstatus);
+            debug!("Cannot add to vault partially: Needed [{}], Available [{}]", parts, VAULT_MAX as i32 * 8 - self.vaultstatus);
             self.consume_vault()?;
             self.add_to_vault_partially(byte, parts)?;
         }
@@ -68,7 +68,7 @@ impl<W: Write> Decoder<W> {
             self.vault += (byte as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;
         } else {
-            warn!("Cannot add to vault: Needed [{}], Available [{}]", 8, VAULT_MAX as i32 * 8 - self.vaultstatus);
+            debug!("Cannot add to vault: Needed [{}], Available [{}] {}", 8, VAULT_MAX as i32 * 8 - self.vaultstatus, self.remaining_outputbytes);
             self.consume_vault()?;
             self.add_to_vault(byte)?;
         }
@@ -109,7 +109,7 @@ impl<W: Write> Decoder<W> {
             self.vault <<= self.vaultstatus;
             self.vaultstatus -= self.vaultstatus;
         } else {
-            warn!("Buffer will not be filled from vault!: Needed [{}], Available [{}]", needed, self.vaultstatus)
+            debug!("Buffer will not be filled from vault!: Needed [{}], Available [{}]", needed, self.vaultstatus)
         }
         Ok(())
     }

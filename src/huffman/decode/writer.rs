@@ -1,7 +1,8 @@
 use crate::huffman::decode::symboltable;
 use crate::model::Model;
-use std::io::{Write, Error, ErrorKind};
-use log::{warn, debug};
+use std::io::{Write};
+use log::{warn};
+use super::DecoderError;
 
 const VAULT_MAX: u64 = 6;
 const VAULT_MIN: u64 = 2;
@@ -37,7 +38,7 @@ impl<W: Write> Decoder<W> {
             sentinel: model.sentinel() as u64
         }
     }
-    fn add_to_buffer(&mut self, byte: u8) -> Result<(), Error> {
+    fn add_to_buffer(&mut self, byte: u8) -> Result<(), DecoderError> {
         assert!(self.bufferstatus <= 64);
         if self.bufferstatus <= 56 {
             self.buffer += (byte as u64) << (64 - self.bufferstatus - 8);
@@ -51,38 +52,38 @@ impl<W: Write> Decoder<W> {
         }
         Ok(())
     }
-    fn add_to_vault_partially(&mut self, byte: u8, parts: usize) -> Result<(), Error> {
+    fn add_to_vault_partially(&mut self, byte: u8, parts: usize) -> Result<(), DecoderError> {
         let value = byte & (2u8.pow(parts as u32) - 1);
         if self.vaultstatus <= ((VAULT_MAX as i32 * 8) - parts as i32) {
             self.vault += (value as u64) << (64 - self.vaultstatus - parts as i32);
             self.vaultstatus += parts as i32;
         } else {
-            debug!("Cannot add to vault partially: Needed [{}], Available [{}]", parts, VAULT_MAX as i32 * 8 - self.vaultstatus);
+            warn!("Cannot add to vault partially: Needed [{}], Available [{}]", parts, VAULT_MAX as i32 * 8 - self.vaultstatus);
             self.consume_vault()?;
             self.add_to_vault_partially(byte, parts)?;
         }
         Ok(())
     }
-    fn add_to_vault(&mut self, byte: u8) -> Result<(), Error>{
+    fn add_to_vault(&mut self, byte: u8) -> Result<(), DecoderError>{
         if self.vaultstatus <= VAULT_MAX as i32 * 8 {
             self.vault += (byte as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;
         } else {
-            debug!("Cannot add to vault: Needed [{}], Available [{}] {}", 8, VAULT_MAX as i32 * 8 - self.vaultstatus, self.remaining_outputbytes);
+            warn!("Cannot add to vault: Needed [{}], Available [{}] {}", 8, VAULT_MAX as i32 * 8 - self.vaultstatus, self.remaining_outputbytes);
             self.consume_vault()?;
             self.add_to_vault(byte)?;
         }
         Ok(())
     }
-    fn consume_vault(&mut self) -> Result<(), Error> {
+    fn consume_vault(&mut self) -> Result<(), DecoderError> {
         while self.vaultstatus >= (VAULT_MIN as i32) * 8 {
             self.put()?;
         }
         Ok(())
     }
-    fn put(&mut self) -> Result<(), Error> {
+    fn put(&mut self) -> Result<(), DecoderError> {
         if self.remaining_outputbytes == 0 {
-            return Err(Error::new(ErrorKind::Other, "All data already output"))
+            return Err(DecoderError::AllOutputAlreadyWritten)
         }
         assert!(self.bufferstatus >= self.sentinel as i32);
         let lookup_value = self.buffer >> (64 - self.sentinel);
@@ -94,7 +95,7 @@ impl<W: Write> Decoder<W> {
         self.fill_buffer_from_vault()?;
         Ok(())
     }
-    fn fill_buffer_from_vault(&mut self) -> Result<(), Error> {
+    fn fill_buffer_from_vault(&mut self) -> Result<(), DecoderError> {
         let needed = 64 - self.bufferstatus;
         if needed == 0 {
             return Ok(())
@@ -109,14 +110,14 @@ impl<W: Write> Decoder<W> {
             self.vault <<= self.vaultstatus;
             self.vaultstatus -= self.vaultstatus;
         } else {
-            debug!("Buffer will not be filled from vault!: Needed [{}], Available [{}]", needed, self.vaultstatus)
+            warn!("Buffer will not be filled from vault!: Needed [{}], Available [{}]", needed, self.vaultstatus)
         }
         Ok(())
     }
 }
 
 impl<W: Write> Write for Decoder<W> {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
         if self.remaining_outputbytes == 0 {
             return Ok(0)
         }
@@ -125,40 +126,30 @@ impl<W: Write> Write for Decoder<W> {
             if self.bufferstatus < 64 {
                 match self.add_to_buffer(byte) {
                     Ok(()) => {},
-                    Err(error) => match error.kind() {
-                        ErrorKind::Other => {
-                            if error.to_string() == "All data already output" {
-                                return Ok(0)
-                            } else {
-                                panic!("Problem with data handling: {}", error)
-                            }},
-                        _ => { panic!("Problem with data handling {}", error)}
-                        }
+                    Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(0)},
+                    Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
                     }
             } else if self.bufferstatus == 64 {
                 match self.add_to_vault(byte) {
                     Ok(()) => {},
-                    Err(error) => match error.kind() {
-                        ErrorKind::Other => {
-                            if error.to_string() == "All data already output" {
-                                return Ok(0)
-                            } else {
-                                panic!("Problem with data handling: {}", error)
-                            }},
-                        _ => { panic!("Problem with data handling {}", error)}
-                        }
+                    Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(0)},
+                    Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
                     }
             } else {
-                return Err(Error::new(ErrorKind::Other, "Buffer overflow"))
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, DecoderError::BufferOverflow))
             }
             // self.remaining_outputbytes -= 1;
             // Can not count output bytes here since compressed byte might contain several uncompressed bytes
         }
         Ok(nbytes as usize)
     }
-    fn flush(&mut self) -> Result<(), Error> {
+    fn flush(&mut self) -> Result<(), std::io::Error> {
         while self.remaining_outputbytes > 0 {
-            self.put()?;
+            match self.put() {
+                Ok(()) => {},
+                Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(())},
+                Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
+                }
         }
         Ok(())
     }

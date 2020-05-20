@@ -32,7 +32,7 @@ fn main() {
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         enc.write(&origin).expect("");
         enc.flush().expect("");
-        info!("Encoding {}", now.elapsed().as_secs_f32());
+        println!("Encoding {}", now.elapsed().as_secs_f32());
         let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
 
         // There are three different implementations of the decoder.
@@ -44,11 +44,11 @@ fn main() {
             Cursor::new(Vec::with_capacity(origin.len())),
             &h,
             origin.len() as u64);
-        decoder.write_all(&encoded_data);
-        decoder.flush();
-        info!("Decoder Writer {}", now.elapsed().as_secs_f32());
+        decoder.write_all(&encoded_data).unwrap();
+        decoder.flush().unwrap();
+        println!("Decoder Writer {}", now.elapsed().as_secs_f32());
         if decoder.inner.get_ref() != &origin {
-            error!("{} Decoder Writer wrong!", j);
+            print!("{} Decoder Writer wrong!", j);
             write_file("writer", j, &origin)
         }
 
@@ -66,9 +66,9 @@ fn main() {
         // Decoder using simple function
         let now = Instant::now();
         let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
-        info!("Simple function {}", now.elapsed().as_secs_f32());
+        println!("Simple function {}", now.elapsed().as_secs_f32());
         if decoded_words != origin {
-            error!("{} Simple function wrong!", j);
+            println!("{} Simple function wrong!", j);
             write_file("simple", j, &origin)
         }
 
@@ -76,9 +76,9 @@ fn main() {
         let now = Instant::now();
         let decoder = rscompress_huffman::huffman::decode::iterator::Decoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
         let decoded_data: Vec<u8> = decoder.collect();
-        info!("Iterator function {}", now.elapsed().as_secs_f32());
+        println!("Iterator function {}", now.elapsed().as_secs_f32());
         if decoded_data != origin {
-            error!("{} Iterator function wrong!", j);
+            println!("{} Iterator function wrong!", j);
             write_file("iterator", j, &origin)
             }
     }

@@ -1,7 +1,7 @@
 use crate::huffman::decode::symboltable;
 use crate::model::Model;
 use std::io::{Write};
-use log::{warn};
+use log::{warn, debug};
 use super::DecoderError;
 
 const VAULT_MAX: u64 = 6;
@@ -65,6 +65,7 @@ impl<W: Write> Decoder<W> {
         Ok(())
     }
     fn add_to_vault(&mut self, byte: u8) -> Result<(), DecoderError>{
+        warn!("Adding to vault {}", self);
         if self.vaultstatus <= VAULT_MAX as i32 * 8 {
             self.vault += (byte as u64) << (64 - self.vaultstatus - 8);
             self.vaultstatus += 8;

@@ -10,7 +10,7 @@ use std::io::{BufRead, BufReader, BufWriter, Read};
 use std::io::{Cursor, Write};
 use std::time::Instant;
 
-const ROUNDS: usize = 50;
+const ROUNDS: usize = 1;
 
 #[allow(unreachable_code)]
 fn main() {

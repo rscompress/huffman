@@ -44,7 +44,7 @@ impl std::convert::Into<std::io::Error> for DecoderError {
     fn into(self) -> std::io::Error {
         match self {
             DecoderError::IO(err) => err,
-            _ => std::io::Error::new(std::io::ErrorKind::Other, self.description()),
+            _ => std::io::Error::new(std::io::ErrorKind::Other, self),
         }
     }
 }

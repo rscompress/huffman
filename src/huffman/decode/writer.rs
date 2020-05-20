@@ -127,16 +127,16 @@ impl<W: Write> Write for Decoder<W> {
                 match self.add_to_buffer(byte) {
                     Ok(()) => {},
                     Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(0)},
-                    Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
+                    Err(err) => return Err(err.into())
                     }
             } else if self.bufferstatus == 64 {
                 match self.add_to_vault(byte) {
                     Ok(()) => {},
                     Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(0)},
-                    Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
+                    Err(err) => return Err(err.into())
                     }
             } else {
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, DecoderError::BufferOverflow))
+                return Err(DecoderError::BufferOverflow.into())
             }
             // self.remaining_outputbytes -= 1;
             // Can not count output bytes here since compressed byte might contain several uncompressed bytes
@@ -148,7 +148,7 @@ impl<W: Write> Write for Decoder<W> {
             match self.put() {
                 Ok(()) => {},
                 Err(DecoderError::AllOutputAlreadyWritten) => {return Ok(())},
-                Err(err) => {return Err(std::io::Error::new(std::io::ErrorKind::Other, err))},
+                Err(err) => return Err(err.into())
                 }
         }
         Ok(())

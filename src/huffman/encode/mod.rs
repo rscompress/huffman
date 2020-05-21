@@ -14,7 +14,10 @@
 
 use crate::model::Model;
 use log::debug;
-use std::io::{Error, ErrorKind, Write};
+use std::io::{Write};
+use error::EncoderError;
+
+mod error;
 
 /// The Encoder<W> struct adds compressed streaming output for any writer.
 ///
@@ -54,7 +57,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
     pub fn plain_write(&mut self, bytes: &[u8]) -> std::io::Result<()> {
         self.inner.write_all(bytes)
     }
-    fn put(&mut self) -> std::io::Result<usize> {
+    fn put(&mut self) -> Result<usize, EncoderError> {
         let output = (self.buffer >> 56) as u8;
         let no = self.inner.write(&[output])?;
         debug! {"Output (norml): {:8b}", output};
@@ -64,7 +67,7 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
         self.remaining_bits += 8;
         Ok(no)
     }
-    fn cleanup(&mut self) -> std::io::Result<usize> {
+    fn cleanup(&mut self) -> Result<usize, EncoderError> {
         let output = [
             (self.buffer >> 56) as u8,
             ((self.buffer & 0x00FF_0000_0000_0000) >> 48) as u8,
@@ -73,17 +76,18 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
         ];
         let no = self.inner.write(&output)?;
-        for n in output.iter() {
-            debug!("Output (batch): {:8b}", n);
-        }
+        // for n in output.iter() {
+        //     debug!("Output (batch): {:8b}", n);
+        // }
         self.writeout += no;
         self.buffer <<= 40;
         self.remaining_bits += 40;
         Ok(no)
     }
-    fn update_buffer(&mut self, code: usize) {
+    fn update_buffer(&mut self, code: usize) -> Result<(), EncoderError>{
         self.buffer += (code << self.remaining_bits) as u64;
         debug!("New Buffer: {:b}", self.buffer);
+        Ok(())
     }
 }
 
@@ -100,15 +104,21 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
                 code
             );
             if codelen > 64 {
-                return Err(Error::new(ErrorKind::InvalidData, "Codelen > 64"));
+                return Err(EncoderError::CodelenError.into());
             }
             while codelen > self.remaining_bits {
-                writeout += self.put()?;
+                match self.put() {
+                    Ok(nbytes) => {writeout += nbytes},
+                    Err(err) => return Err(err.into()),
+                }
             }
             self.remaining_bits -= codelen;
             self.update_buffer(code);
             if self.buffer & 0x0000_0000_00FF_0000 > 0 {
-                writeout += self.cleanup()?;
+                match self.cleanup() {
+                    Ok(nbytes) => {writeout += nbytes},
+                    Err(err) => return Err(err.into()),
+                }
             }
         }
 

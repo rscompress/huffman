@@ -24,15 +24,7 @@ impl std::fmt::Display for DecoderError {
 }
 
 use std::error::Error;
-impl Error for DecoderError {
-    fn description(&self) -> &str {
-        match *self {
-            DecoderError::AllOutputAlreadyWritten => "Output complete",
-            DecoderError::BufferOverflow => "Bufffer overflow",
-            DecoderError::IO(ref err) => err.description(),
-        }
-    }
-}
+impl Error for DecoderError {}
 
 impl std::convert::From<std::io::Error> for DecoderError {
     fn from(err: std::io::Error) -> Self {

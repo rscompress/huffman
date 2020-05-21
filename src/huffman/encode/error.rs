@@ -16,14 +16,7 @@ impl fmt::Display for EncoderError {
 }
 
 use std::error::Error;
-impl Error for EncoderError {
-    fn description(&self) -> &str {
-        match *self {
-            EncoderError::CodelenError => "Codeword too long",
-            EncoderError::IO(ref err) => err.description(),
-        }
-    }
-}
+impl Error for EncoderError { }
 
 impl std::convert::From<std::io::Error> for EncoderError {
     fn from(err: std::io::Error) -> Self {

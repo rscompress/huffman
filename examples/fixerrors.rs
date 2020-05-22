@@ -3,7 +3,7 @@ use std::fs::File;
 use log::{info};
 use rscompress_huffman::huffman::{Huffman, encode::Encoder};
 use std::time::Instant;
-use rscompress_huffman::huffman::decode::one::read;
+use rscompress_huffman::huffman::decode;
 
 fn main() {
     env_logger::init();
@@ -36,7 +36,7 @@ fn main() {
 
     // Decoder using simple function
     let now = Instant::now();
-    let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
+    let decoded_words = decode(enc.inner.get_ref(), &h, enc.readbytes);
     info!("Simple function {}", now.elapsed().as_secs_f32());
 
     // Decoder using iterator

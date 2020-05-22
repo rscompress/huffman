@@ -1,7 +1,4 @@
-use rscompress_huffman::huffman::Huffman;
-use rscompress_huffman::huffman::encode::Encoder;
-// use rscompress_huffman::stats::random_bytes;
-use rscompress_huffman::huffman::decode::writer::Decoder;
+use rscompress_huffman::huffman::{Huffman, Encoder, WriterDecoder};
 use std::time::Instant;
 use std::io::{Cursor, Write};
 use log::{info};
@@ -26,7 +23,7 @@ fn main() {
     }
     println!("");
 
-    let mut decoder = Decoder::new(Cursor::new(Vec::new()), &h, origin.len() as u64);
+    let mut decoder = WriterDecoder::new(Cursor::new(Vec::new()), &h, origin.len() as u64);
     decoder.write(&encoded_data[..]).unwrap();
     println!("{}", decoder);
 

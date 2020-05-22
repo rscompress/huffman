@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use log::{info, error};
-use rscompress_huffman::huffman::encode::Encoder;
+use rscompress_huffman::huffman::Encoder;
 use rscompress_huffman::huffman::Huffman;
 use rscompress_huffman::stats::{generate_random_byte_vector, random_bytes as generate_bytes};
 use std::fs::File;
@@ -8,7 +8,7 @@ use std::io::prelude::*;
 use std::io::{BufRead, BufReader, BufWriter, Read};
 use std::io::{Cursor, Write};
 use std::time::Instant;
-use rscompress_huffman::huffman::decode::{IteratorDecoder, ReaderDecoder, WriterDecoder, decode};
+use rscompress_huffman::huffman::{IteratorDecoder, ReaderDecoder, WriterDecoder, decode};
 
 const ROUNDS: usize = 50;
 

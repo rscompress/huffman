@@ -85,11 +85,6 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
         self.remaining_bits += 40;
         Ok(no)
     }
-    fn update_buffer(&mut self, code: usize) -> Result<(), EncoderError>{
-        self.buffer += (code << self.remaining_bits) as u64;
-        debug!("New Buffer: {:b}", self.buffer);
-        Ok(())
-    }
 }
 
 impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
@@ -114,7 +109,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
                 }
             }
             self.remaining_bits -= codelen;
-            self.update_buffer(code);
+            self.buffer += (code << self.remaining_bits) as u64;
             if self.buffer & 0x0000_0000_00FF_0000 > 0 {
                 match self.cleanup() {
                     Ok(nbytes) => {writeout += nbytes},

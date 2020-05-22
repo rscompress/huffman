@@ -46,7 +46,10 @@ pub fn generate_random_byte_vector(min: u8, max: u8, count: usize, weights: &[u8
 /// Shameless copy & paste from [alexcrichton - flate2](https://github.com/alexcrichton/flate2-rs)
 pub fn random_bytes(count: usize) -> Vec<u8> {
     use std::iter;
-    iter::repeat(()).map(|_| rand::thread_rng().gen()).take(count).collect::<Vec<u8>>()
+    iter::repeat(())
+        .map(|_| rand::thread_rng().gen())
+        .take(count)
+        .collect::<Vec<u8>>()
 }
 
 #[cfg(test)]

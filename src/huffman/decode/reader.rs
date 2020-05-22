@@ -13,11 +13,11 @@
 //! `_reserve`. This causes the `vault` to be emptied, since the buffer gets
 //! refilled with the `vault`.
 
+use crate::huffman::decode::symboltable;
+use crate::model::Model;
 use log::debug;
 use std::collections::LinkedList;
-use crate::model::Model;
 use std::io::Read;
-use crate::huffman::decode::symboltable;
 
 const MAX_VAULT: u64 = 52;
 const MIN_VAULT: u64 = 16;
@@ -38,7 +38,7 @@ pub struct Decoder<R> {
 
 fn initiate_buffer<R: Read>(reader: &mut R) -> (u64, u64) {
     let mut result = 0u64;
-    let mut buf: [u8;8] = [0;8];
+    let mut buf: [u8; 8] = [0; 8];
     let nbytes = reader.read(&mut buf).expect("Cannot read");
 
     for i in 0..nbytes {
@@ -57,7 +57,6 @@ fn initiate_reserve() -> LinkedList<u8> {
     LinkedList::<u8>::new()
 }
 
-
 impl<R: Read> Decoder<R> {
     pub fn new<M: Model>(mut reader: R, model: &M, output: u64) -> Self {
         let (buffer, bufferstatus) = initiate_buffer(&mut reader);
@@ -70,7 +69,7 @@ impl<R: Read> Decoder<R> {
             sentinel: initiate_sentinel(model.sentinel() as u64),
             _reserve: initiate_reserve(),
             remaining_outputbytes: output,
-            symboltable: symboltable::SymbolTable::from_btree(&model.to_btreemap())
+            symboltable: symboltable::SymbolTable::from_btree(&model.to_btreemap()),
         }
     }
     fn consume_buffer(&mut self) -> Option<u8> {
@@ -119,10 +118,7 @@ impl<R: Read> Decoder<R> {
     fn decode(&mut self, symbol: Option<u8>) -> Option<u8> {
         if self.remaining_outputbytes == 0 {
             debug!("Finished decoding");
-            debug!(
-                "Buffer {:064b} Vault {:064b}",
-                self.buffer, self.vault
-            );
+            debug!("Buffer {:064b} Vault {:064b}", self.buffer, self.vault);
             return None;
         }
         if let Some(val) = symbol {
@@ -197,36 +193,41 @@ impl<R: Read> Read for Decoder<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::huffman::Huffman;
     use crate::huffman::encode::Encoder;
+    use crate::huffman::Huffman;
     use std::io::{Cursor, Write};
 
-    fn encode_str(sentence: &str) -> (Vec<u8>, Vec<u8>, Huffman){
+    fn encode_str(sentence: &str) -> (Vec<u8>, Vec<u8>, Huffman) {
         let data = sentence.as_bytes().to_vec();
         let h = Huffman::from_slice(data.as_slice());
 
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         let _output_bytes = enc.write(&data).expect("");
         enc.flush().expect("");
-        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        let encoded_data: Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
         (data, encoded_data, h)
     }
 
-    fn encode_file(mut file: std::fs::File) -> (Vec<u8>, Vec<u8>, Huffman){
-        let mut data : Vec<u8> = Vec::new(); //file.as_bytes().to_vec();
+    fn encode_file(mut file: std::fs::File) -> (Vec<u8>, Vec<u8>, Huffman) {
+        let mut data: Vec<u8> = Vec::new(); //file.as_bytes().to_vec();
         file.read_to_end(&mut data).unwrap();
         let h = Huffman::from_slice(data.as_slice());
 
         let mut enc = Encoder::new(Cursor::new(Vec::new()), &h);
         let _output_bytes = enc.write(&data).expect("");
         enc.flush().expect("");
-        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        let encoded_data: Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
         (data, encoded_data, h)
     }
 
     fn roundtrip_decode_blockwise(sentence: &str, blocksize: usize) {
         let (data, encoded_data, h) = encode_str(sentence);
-        println!("Encoded {:?} ({}) [{}]", encoded_data, sentence, sentence.len());
+        println!(
+            "Encoded {:?} ({}) [{}]",
+            encoded_data,
+            sentence,
+            sentence.len()
+        );
         let mut decoder = Decoder::new(Cursor::new(encoded_data), &h, data.len() as u64);
         let mut decoded_data = vec![0u8; blocksize];
         let mut nbytes = 1;
@@ -235,7 +236,7 @@ mod tests {
         // TODO: read_to_end() does not seem to work
         while nbytes > 0 {
             nbytes = decoder.read(&mut decoded_data).unwrap();
-            assert_eq!(decoded_data[..nbytes], data[iteration..iteration+nbytes]);
+            assert_eq!(decoded_data[..nbytes], data[iteration..iteration + nbytes]);
             iteration += nbytes;
             println!("{:?} {}", decoded_data, nbytes);
         }

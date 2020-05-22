@@ -1,15 +1,14 @@
-
+use log::debug;
+use std::collections::BTreeMap;
+use succinct::bit_vec::BitVecMut;
 use succinct::rank::BitRankSupport;
 use succinct::rsdict::RsDict;
 use succinct::BitVector;
-use succinct::bit_vec::BitVecMut;
-use std::collections:: BTreeMap;
-use log::debug;
 
 #[derive(Debug)]
 pub struct SymbolTable {
     table: Vec<(u8, u8)>,
-    rbv: RsDict
+    rbv: RsDict,
 }
 
 impl SymbolTable {

@@ -12,9 +12,9 @@
 //! The actual output is only written on disk as soon as it has enough bits set,
 //! that it looses no unused bits.
 use crate::model::Model;
-use log::{debug, log_enabled};
-use std::io::{Write};
 use error::EncoderError;
+use log::{debug, log_enabled};
+use std::io::Write;
 
 mod error;
 
@@ -104,7 +104,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             }
             while codelen > self.remaining_bits {
                 match self.put() {
-                    Ok(nbytes) => {writeout += nbytes},
+                    Ok(nbytes) => writeout += nbytes,
                     Err(err) => return Err(err.into()),
                 }
             }
@@ -112,7 +112,7 @@ impl<'a, W: Write, M: Model> Write for Encoder<'a, W, M> {
             self.buffer += (code << self.remaining_bits) as u64;
             if self.buffer & 0x0000_0000_00FF_0000 > 0 {
                 match self.cleanup() {
-                    Ok(nbytes) => {writeout += nbytes},
+                    Ok(nbytes) => writeout += nbytes,
                     Err(err) => return Err(err.into()),
                 }
             }

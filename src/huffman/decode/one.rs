@@ -1,9 +1,8 @@
-
-use succinct::rank::BitRankSupport;
-use std::collections::BTreeMap;
 use super::symboltable;
 use crate::model::Model;
-use log::{debug};
+use log::debug;
+use std::collections::BTreeMap;
+use succinct::rank::BitRankSupport;
 
 pub fn search_key_or_next_small_key(tree: &BTreeMap<usize, (u8, u8)>, key: usize) -> (u8, u8) {
     let mut iter = tree.range(..key + 1);

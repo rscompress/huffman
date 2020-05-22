@@ -1,14 +1,14 @@
 #![allow(unused_imports)]
-use log::{info, error};
+use log::{error, info};
 use rscompress_huffman::huffman::Encoder;
 use rscompress_huffman::huffman::Huffman;
+use rscompress_huffman::huffman::{decode, IteratorDecoder, ReaderDecoder, WriterDecoder};
 use rscompress_huffman::stats::{generate_random_byte_vector, random_bytes as generate_bytes};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, BufWriter, Read};
 use std::io::{Cursor, Write};
 use std::time::Instant;
-use rscompress_huffman::huffman::{IteratorDecoder, ReaderDecoder, WriterDecoder, decode};
 
 const ROUNDS: usize = 50;
 
@@ -17,7 +17,6 @@ fn main() {
     env_logger::init();
 
     for j in 0..ROUNDS {
-
         // Generate random data
         let mut origin: Vec<u8> = Vec::new();
         let mut r = BufReader::with_capacity(4096, File::open("test.raw").unwrap());
@@ -33,7 +32,7 @@ fn main() {
         enc.write(&origin).expect("");
         enc.flush().expect("");
         println!("Encoding {}", now.elapsed().as_secs_f32());
-        let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+        let encoded_data: Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
 
         // There are three different implementations of the decoder.
         // They are being tested for possible errors while decoding.
@@ -43,7 +42,8 @@ fn main() {
         let mut decoder = WriterDecoder::new(
             Cursor::new(Vec::with_capacity(origin.len())),
             &h,
-            origin.len() as u64);
+            origin.len() as u64,
+        );
         decoder.write_all(&encoded_data).unwrap();
         decoder.flush().unwrap();
         println!("Decoder Writer {}", now.elapsed().as_secs_f32());
@@ -80,13 +80,12 @@ fn main() {
         if decoded_data != origin {
             println!("{} Iterator function wrong!", j);
             write_file("iterator", j, &origin)
-            }
+        }
     }
 }
 
-
 fn write_file(method: &str, run: usize, data: &[u8]) {
-    let file  = format!("testdata/test.{}.{}.raw", method, run);
+    let file = format!("testdata/test.{}.{}.raw", method, run);
     let dfile = File::create(file).expect("Failed to create destination file");
     let mut w = BufWriter::with_capacity(4096, dfile);
     w.write_all(&data).unwrap();

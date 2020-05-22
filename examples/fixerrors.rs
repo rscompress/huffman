@@ -1,9 +1,9 @@
-use std::io::{BufReader, Read, Cursor, Write, Seek};
-use std::fs::File;
-use log::{info};
-use rscompress_huffman::huffman::{Huffman, encode::Encoder};
-use std::time::Instant;
+use log::info;
 use rscompress_huffman::huffman::decode;
+use rscompress_huffman::huffman::{encode::Encoder, Huffman};
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read, Seek, Write};
+use std::time::Instant;
 
 fn main() {
     env_logger::init();
@@ -22,14 +22,18 @@ fn main() {
     enc.write(&origin).expect("");
     enc.flush().expect("");
     info!("Encoding {}", now.elapsed().as_secs_f32());
-    let encoded_data : Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
+    let encoded_data: Vec<u8> = enc.inner.get_ref().iter().map(|&x| x).collect();
 
     // There are three different implementations of the decoder.
     // They are being tested for possible errors while decoding.
 
     // Decoder using read()
     let now = Instant::now();
-    let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
+    let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(
+        Cursor::new(&encoded_data),
+        &h,
+        origin.len() as u64,
+    );
     let mut decoded_data: Vec<u8> = Vec::new();
     decoder.read_to_end(&mut decoded_data).unwrap();
     info!("Decoder Reader {}", now.elapsed().as_secs_f32());
@@ -41,7 +45,11 @@ fn main() {
 
     // Decoder using iterator
     let now = Instant::now();
-    let decoder = rscompress_huffman::huffman::decode::iterator::Decoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
+    let decoder = rscompress_huffman::huffman::decode::iterator::Decoder::new(
+        encoded_data.into_iter(),
+        &h,
+        origin.len() as u64,
+    );
     let decoded_data: Vec<u8> = decoder.collect();
     info!("Iterator function {}", now.elapsed().as_secs_f32());
 }

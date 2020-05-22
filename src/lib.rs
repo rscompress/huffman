@@ -34,7 +34,9 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     info!("Output: {}", &destination);
     // Create reader object
     let sfile = File::open(source).expect("Failed to open source file");
-    let filesize = std::fs::metadata(source).expect("Can not read filesize").len();
+    let filesize = std::fs::metadata(source)
+        .expect("Can not read filesize")
+        .len();
     let mut reader = BufReader::with_capacity(BUF, sfile);
     let mut buffer: Vec<u8> = Vec::with_capacity(BUF);
     unsafe { buffer.set_len(BUF) }
@@ -60,9 +62,7 @@ pub fn stream_compress_with_header_information(source: &str, destination: &str) 
     writer
         .plain_write(&header_length)
         .expect("Could not write header length");
-    writer
-        .plain_write(&header)
-        .expect("Could not write header");
+    writer.plain_write(&header).expect("Could not write header");
 
     //Compress file
     loop {

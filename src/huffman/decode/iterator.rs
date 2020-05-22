@@ -1,10 +1,9 @@
-
+use crate::huffman::decode::symboltable::prepare_lookup;
+use crate::model::Model;
 use log::debug;
 use std::collections::LinkedList;
-use succinct::rsdict::RsDict;
-use crate::model::Model;
 use succinct::rank::BitRankSupport;
-use crate::huffman::decode::symboltable::prepare_lookup;
+use succinct::rsdict::RsDict;
 
 /// The Decoder<I> struct decodes iterable data structures
 #[derive(Debug)]
@@ -15,7 +14,7 @@ pub struct Decoder<I> {
     sentinel: u64,
     remaining_outputbytes: u64,
     rbv: RsDict,
-    table: Vec<(u8,u8)>,
+    table: Vec<(u8, u8)>,
     _reserve: LinkedList<u8>,
     _vaultstatus: u64,
     _bufferstatus: u64,
@@ -30,7 +29,7 @@ fn initiate_buffer(iter: &mut impl Iterator<Item = u8>) -> (u64, u64) {
             result += (value as u64) << (56 - used);
             used += 8;
         } else {
-            break
+            break;
         }
     }
     (result, used)
@@ -129,10 +128,7 @@ impl<I: Iterator<Item = u8>> Iterator for Decoder<I> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining_outputbytes == 0 {
             debug!("Finished decoding");
-            debug!(
-                "Buffer {:064b} Vault {:064b}",
-                self.buffer, self.vault
-            );
+            debug!("Buffer {:064b} Vault {:064b}", self.buffer, self.vault);
             return None;
         }
         if let Some(val) = self.data.next() {

@@ -1,6 +1,5 @@
-
 #[derive(Debug)]
-pub(in super) enum EncoderError {
+pub(super) enum EncoderError {
     CodelenError,
     IO(std::io::Error),
 }
@@ -16,7 +15,7 @@ impl fmt::Display for EncoderError {
 }
 
 use std::error::Error;
-impl Error for EncoderError { }
+impl Error for EncoderError {}
 
 impl std::convert::From<std::io::Error> for EncoderError {
     fn from(err: std::io::Error) -> Self {
@@ -28,7 +27,7 @@ impl std::convert::Into<std::io::Error> for EncoderError {
     fn into(self) -> std::io::Error {
         match self {
             EncoderError::IO(err) => err,
-            _ => std::io::Error::new(std::io::ErrorKind::Other, self)
+            _ => std::io::Error::new(std::io::ErrorKind::Other, self),
         }
     }
 }

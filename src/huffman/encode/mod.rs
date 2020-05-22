@@ -11,9 +11,8 @@
 //! The Encoder implemented in this module buffers the output bits in a `u32`.
 //! The actual output is only written on disk as soon as it has enough bits set,
 //! that it looses no unused bits.
-
 use crate::model::Model;
-use log::debug;
+use log::{debug, log_enabled};
 use std::io::{Write};
 use error::EncoderError;
 
@@ -76,9 +75,11 @@ impl<'a, W: Write, M: Model> Encoder<'a, W, M> {
             ((self.buffer & 0x0000_0000_FF00_0000) >> 24) as u8,
         ];
         let no = self.inner.write(&output)?;
-        // for n in output.iter() {
-        //     debug!("Output (batch): {:8b}", n);
-        // }
+        if log_enabled!(log::Level::Debug) {
+            for n in output.iter() {
+                debug!("Output (batch): {:8b}", n);
+            }
+        }
         self.writeout += no;
         self.buffer <<= 40;
         self.remaining_bits += 40;

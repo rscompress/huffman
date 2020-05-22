@@ -7,6 +7,12 @@ pub mod decode;
 pub mod encode;
 pub mod header;
 
+pub use decode::reader::Decoder as ReaderDecoder;
+pub use decode::iterator::Decoder as IteratorDecoder;
+pub use decode::writer::Decoder as WriterDecoder;
+pub use decode::one::read as decode;
+pub use encode::Encoder;
+
 pub struct Huffman {
     codewords: [usize; 256],
     length: [usize; 256],

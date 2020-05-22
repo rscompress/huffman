@@ -5,11 +5,6 @@ pub mod one;
 pub mod iterator;
 pub mod writer;
 
-pub use reader::Decoder as ReaderDecoder;
-pub use iterator::Decoder as IteratorDecoder;
-pub use writer::Decoder as WriterDecoder;
-pub use one::read as decode;
-
 #[derive(Debug)]
 enum DecoderError {
     AllOutputAlreadyWritten,

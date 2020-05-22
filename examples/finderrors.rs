@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 use log::{info, error};
-use rscompress_huffman::huffman::decode::one::read;
 use rscompress_huffman::huffman::encode::Encoder;
 use rscompress_huffman::huffman::Huffman;
 use rscompress_huffman::stats::{generate_random_byte_vector, random_bytes as generate_bytes};
@@ -9,6 +8,7 @@ use std::io::prelude::*;
 use std::io::{BufRead, BufReader, BufWriter, Read};
 use std::io::{Cursor, Write};
 use std::time::Instant;
+use rscompress_huffman::huffman::decode::{IteratorDecoder, ReaderDecoder, WriterDecoder, decode};
 
 const ROUNDS: usize = 50;
 
@@ -40,7 +40,7 @@ fn main() {
 
         // Writer Decoder
         let now = Instant::now();
-        let mut decoder = rscompress_huffman::huffman::decode::writer::Decoder::new(
+        let mut decoder = WriterDecoder::new(
             Cursor::new(Vec::with_capacity(origin.len())),
             &h,
             origin.len() as u64);
@@ -52,20 +52,20 @@ fn main() {
             write_file("writer", j, &origin)
         }
 
-        // // Decoder using read()
-        // let now = Instant::now();
-        // let mut decoder = rscompress_huffman::huffman::decode::reader::Decoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
-        // let mut decoded_data: Vec<u8> = Vec::new();
-        // decoder.read_to_end(&mut decoded_data).unwrap();
-        // info!("Decoder Reader {}", now.elapsed().as_secs_f32());
-        // if decoded_data != origin {
-        //     error!("{} Decoder Reader wrong!", j);
-        //     write_file("reader", j, &origin)
-        // }
+        // Decoder using read()
+        let now = Instant::now();
+        let mut decoder = ReaderDecoder::new(Cursor::new(&encoded_data), &h, origin.len() as u64);
+        let mut decoded_data: Vec<u8> = Vec::new();
+        decoder.read_to_end(&mut decoded_data).unwrap();
+        info!("Decoder Reader {}", now.elapsed().as_secs_f32());
+        if decoded_data != origin {
+            error!("{} Decoder Reader wrong!", j);
+            write_file("reader", j, &origin)
+        }
 
         // Decoder using simple function
         let now = Instant::now();
-        let decoded_words = read(enc.inner.get_ref(), &h, enc.readbytes);
+        let decoded_words = decode(enc.inner.get_ref(), &h, enc.readbytes);
         println!("Simple function {}", now.elapsed().as_secs_f32());
         if decoded_words != origin {
             println!("{} Simple function wrong!", j);
@@ -74,7 +74,7 @@ fn main() {
 
         // Decoder using iterator
         let now = Instant::now();
-        let decoder = rscompress_huffman::huffman::decode::iterator::Decoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
+        let decoder = IteratorDecoder::new(encoded_data.into_iter(), &h, origin.len() as u64);
         let decoded_data: Vec<u8> = decoder.collect();
         println!("Iterator function {}", now.elapsed().as_secs_f32());
         if decoded_data != origin {
